@@ -17,3 +17,15 @@ class Historial:
         self.historial.append(url)
         if len(self.historial)>self.limite:
              self.historial.pop(0)
+
+    #=============================================
+    #Funcion obtener_url
+    #===============================================
+    def obtener_url(self, indice):
+        historial_invertido= list(reversed(self.historial))
+
+        if (indice<0 or indice >= len(historial_invertido)):
+            print("Indice fuera de rango")
+            return None
+
+        return historial_invertido[indice]
