@@ -197,6 +197,9 @@ def Modo_Oscuro():
     bottom_bar.config(bg="#3C3C3C")
     barra.actualizar_tema(
         bg_frame="#2E2E2E",
+    bottom_bar.config(bg="#3C3C3C")
+    barra.actualizar_tema(
+        bg_frame="#3C3C3C",
         bg_entry="#555555", fg_entry="#FFFFFF",
         bg_boton="#555555", fg_boton="#FFFFFF",
         active_bg="#666666"
