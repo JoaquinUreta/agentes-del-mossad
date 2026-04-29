@@ -31,7 +31,6 @@ class BarraBusqueda:
         )
         def recArgar():
             self.iniciar_busqueda()
-        # Botón izquierdo (sin función por ahora)
         self.button_izq = ttk.Button(
             self.top_frame,
             text="⟳" ,
@@ -40,6 +39,11 @@ class BarraBusqueda:
         )
         self.button_izq.grid(row=0, column=0, padx=(0, 5))
         
+        # ── Top frame (Entry + Botón Ir) ─────────────────────────────
+        self.top_frame = tk.Frame(parent, bg="#E4E2E2")
+        self.top_frame.columnconfigure(0, weight=1)
+        self.top_frame.columnconfigure(1, weight=0)
+
         self.style.configure("entry.TEntry", fieldbackground="#FFFFFF", foreground="#000")
         self.frame_buscador = ttk.Entry(
             self.top_frame,
@@ -49,6 +53,16 @@ class BarraBusqueda:
         )
         self.frame_buscador.grid(row=0, column=1, sticky="ew", padx=(0, 5))
 
+            textvariable=self.entrada_var
+        )
+        self.frame_buscador.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+
+        self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
+        self.style.map(
+            "button.TButton",
+            background=[("active", "#E4E2E2")],
+            foreground=[("active", "#000")]
+        )
         self.button_ir = ttk.Button(
             self.top_frame,
             text="Ir",
@@ -57,6 +71,7 @@ class BarraBusqueda:
             command=self.iniciar_busqueda
         )
         self.button_ir.grid(row=0, column=2)
+        self.button_ir.grid(row=0, column=1)
 
         # ── Barra de estado ──────────────────────────────────────────
         self.estado_label = tk.Label(
