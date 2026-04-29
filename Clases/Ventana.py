@@ -38,6 +38,17 @@ main.resizable(True, True)
 # ===================== Style =====================
 style = ttk.Style(main)
 style.theme_use("clam")
+
+# ===================== GRID PRINCIPAL =====================
+main.columnconfigure(0, weight=1)
+main.rowconfigure(0, weight=0)   # barra de búsqueda + botones
+main.rowconfigure(1, weight=1)   # contenido
+main.rowconfigure(2, weight=0)   # estado / progreso
+
+# ===================== TOP BAR (búsqueda + botones) =====================
+top_bar = tk.Frame(main, bg="#E4E2E2")
+top_bar.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
+top_bar.columnconfigure(0, weight=1)
 # ===================== GRID PRINCIPAL =====================
 main.columnconfigure(0, weight=1)
 main.rowconfigure(1, weight=1)
@@ -66,6 +77,23 @@ entry1.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
 main_area = tk.Frame(content_frame, bg="#FFFFFF")
 main_area.grid(row=0, column=1, sticky="nsew")
 
+area_contenido = tk.Text(main_area, state="disabled")
+area_contenido.pack(expand=True, fill="both", padx=20, pady=10)
+
+# ===================== BARRA DE BÚSQUEDA =====================
+barra = BarraBusqueda(
+    parent=main,
+    style=style,
+    area_contenido=area_contenido,
+    botones_habilitar=[],
+    boton_editar=None
+)
+
+barra.top_frame.grid(in_=top_bar, row=0, column=0, sticky="ew")
+
+# ===================== FRAME DE BOTONES (fila 1, debajo de la búsqueda) =====================
+buttons_frame = tk.Frame(top_bar, bg="#E4E2E2")
+buttons_frame.grid(row=1, column=0, sticky="e", pady=(3, 0))
 area_contenido = tk.Text(main_area)
 area_contenido.pack(expand=True, fill="both", padx=20, pady=10)
 
@@ -81,6 +109,9 @@ def Editar_Archivo():
     else:
         area_contenido.config(state="disabled")
 
+boton_editar_archivo = ttk.Button(buttons_frame, text="Editar Archivo", command=Editar_Archivo)
+boton_editar_archivo.config(state="disabled")
+boton_editar_archivo.pack(side="left", padx=3)
 boton_editar_archivo = ttk.Button(bottom_bar, text="Editar Archivo", command=Editar_Archivo)
 boton_editar_archivo.config(state="disabled")
 boton_editar_archivo.pack(side="right", padx=5)
@@ -101,6 +132,9 @@ def guardar_archivo(ruta_destino=None):
     except Exception as e:
         messagebox.showerror("Error", f"No se pudo guardar:\n{e}")
 
+boton_guardar_archivo = ttk.Button(buttons_frame, text="Guardar Cambios", command=guardar_archivo)
+boton_guardar_archivo.config(state="disabled")
+boton_guardar_archivo.pack(side="left", padx=3)
 boton_guardar_archivo = ttk.Button(bottom_bar, text="Guardar Cambios", command=guardar_archivo)
 boton_guardar_archivo.config(state="disabled")
 boton_guardar_archivo.pack(side="right", padx=5)
@@ -115,6 +149,26 @@ def guardar_como():
         return
     guardar_archivo(ruta)
 
+boton_guardar_comonuevo = ttk.Button(buttons_frame, text="Guardar Como Nuevo", command=guardar_como)
+boton_guardar_comonuevo.config(state="disabled")
+boton_guardar_comonuevo.pack(side="left", padx=3)
+
+# ===================== AJUSTES =====================
+menu_btn = ttk.Menubutton(buttons_frame, text="Ajustes", style="Custom.TMenubutton")
+menu_btn.pack(side="left", padx=3)
+
+#======================= MARCAR FAV ==============================
+def AñadirFav():
+    urlactual=barra.entrada_var.get().strip()
+    menu_savedurl.add_command(label=urlactual)
+fav_btn = ttk.Button(buttons_frame, text="Añadir URL Favorito", command=AñadirFav)
+fav_btn.pack(side="left", padx=3)
+#===================== URL GUARDADAS ============================
+savedurl_btn = ttk.Menubutton(buttons_frame, text="URL Guardadas", style="Custom.TMenubutton")
+savedurl_btn.pack(side="left", padx=3)
+
+menu_savedurl = tk.Menu(savedurl_btn, tearoff=0)
+savedurl_btn["menu"] = menu_savedurl
 boton_guardar_comonuevo = ttk.Button(bottom_bar, text="Guardar Como Nuevo", command=guardar_como)
 boton_guardar_comonuevo.config(state="disabled")
 boton_guardar_comonuevo.pack(side="right", padx=5)
@@ -134,10 +188,14 @@ barra.progress.grid(row=4, column=0, padx=5, pady=5, sticky="ew")
 # ===================== MODOS OSCURO / CLARO =====================
 def Modo_Oscuro():
     main.config(bg="#2E2E2E")
+    top_bar.config(bg="#2E2E2E")
+    buttons_frame.config(bg="#2E2E2E")
     content_frame.config(bg="#3C3C3C")
     sidebar.config(bg="#444444")
     main_area.config(bg="#3C3C3C")
     area_contenido.config(bg="#1E1E1E", fg="#EEEEEE")
+    barra.actualizar_tema(
+        bg_frame="#2E2E2E",
     bottom_bar.config(bg="#3C3C3C")
     barra.actualizar_tema(
         bg_frame="#3C3C3C",
@@ -153,6 +211,8 @@ def Modo_Oscuro():
 
 def Modo_Claro():
     main.config(bg="#E4E2E2")
+    top_bar.config(bg="#E4E2E2")
+    buttons_frame.config(bg="#E4E2E2")
     content_frame.config(bg="#E4E2E2")
     sidebar.config(bg="#EDECEC")
     main_area.config(bg="#E4E2E2")
@@ -177,6 +237,15 @@ menu_contextual = tk.Menu(menu_btn, tearoff=0)
 menu_contextual.add_command(label="Modo Oscuro", command=Modo_Oscuro)
 menu_contextual.add_command(label="Modo Claro",  command=Modo_Claro)
 menu_btn["menu"] = menu_contextual
+
+# Completar referencias en la barra de búsqueda
+barra.botones_habilitar = [boton_guardar_archivo, boton_guardar_comonuevo]
+barra.boton_editar = boton_editar_archivo
+
+# ===================== ESTADO / PROGRESO (fila 2) =====================
+barra.estado_label.grid(row=2, column=0, sticky="ew")
+barra.progress.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+
 
 # ===================== CIERRE =====================
 def cerrado():

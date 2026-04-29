@@ -17,6 +17,29 @@ class BarraBusqueda:
         self.entrada_var   = tk.StringVar()
         self.barra_progreso = tk.StringVar()
 
+        # ── Top frame (Botón Izq + Entry + Botón Ir) ─────────────────
+        self.top_frame = tk.Frame(parent, bg="#E4E2E2")
+        self.top_frame.columnconfigure(0, weight=0)  # botón izquierdo
+        self.top_frame.columnconfigure(1, weight=1)  # entry
+        self.top_frame.columnconfigure(2, weight=0)  # botón Ir
+
+        self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
+        self.style.map(
+            "button.TButton",
+            background=[("active", "#E4E2E2")],
+            foreground=[("active", "#000")]
+        )
+        def recArgar():
+            self.iniciar_busqueda()
+        # Botón izquierdo (sin función por ahora)
+        self.button_izq = ttk.Button(
+            self.top_frame,
+            text="⟳" ,
+            style="button.TButton",
+            command=recArgar
+        )
+        self.button_izq.grid(row=0, column=0, padx=(0, 5))
+        
         # ── Top frame (Entry + Botón Ir) ─────────────────────────────
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
         self.top_frame.columnconfigure(0, weight=1)
@@ -26,6 +49,11 @@ class BarraBusqueda:
         self.frame_buscador = ttk.Entry(
             self.top_frame,
             style="entry.TEntry",
+            textvariable=self.entrada_var,
+            width=60
+        )
+        self.frame_buscador.grid(row=0, column=1, sticky="ew", padx=(0, 5))
+
             textvariable=self.entrada_var
         )
         self.frame_buscador.grid(row=0, column=0, sticky="ew", padx=(0, 5))
@@ -43,6 +71,7 @@ class BarraBusqueda:
             state="disabled",
             command=self.iniciar_busqueda
         )
+        self.button_ir.grid(row=0, column=2)
         self.button_ir.grid(row=0, column=1)
 
         # ── Barra de estado ──────────────────────────────────────────
