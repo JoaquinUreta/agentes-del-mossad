@@ -4,13 +4,14 @@ from Renderizador import RenderizadorParser
 
 
 class BarraBusqueda:
-    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None):
+    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None):
 
         self.parent = parent
         self.style = style
         self.area_contenido = area_contenido
         self.botones_habilitar = botones_habilitar or []
         self.boton_editar = boton_editar
+        self.botones_requieren_texto = botones_requieren_texto or []
         self.ruta_actual = ""
 
         # ── Variables ────────────────────────────────────────────────
@@ -37,7 +38,7 @@ class BarraBusqueda:
             self.top_frame,
             text="⟳",
             style="button.TButton",
-            command=self.iniciar_busqueda
+            command=self.iniciar_busqueda  
         )
         self.button_izq.grid(row=0, column=0, padx=(0, 5))
 
@@ -81,9 +82,12 @@ class BarraBusqueda:
         self.entrada_var.trace_add("write", self._verificar_barra)
 
     def _verificar_barra(self, *args):
-        """Habilita el botón Ir sólo si el Entry tiene texto."""
+        """Habilita el botón Ir y botones_requieren_texto sólo si el Entry tiene texto."""
         texto = self.entrada_var.get().strip()
-        self.button_ir.config(state="normal" if texto else "disabled")
+        estado = "normal" if texto else "disabled"
+        self.button_ir.config(state=estado)
+        for boton in self.botones_requieren_texto:
+            boton.config(state=estado)
 
     def iniciar_busqueda(self):
         """Arranca la animación de carga y programa la búsqueda."""

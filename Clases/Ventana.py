@@ -175,12 +175,25 @@ menu_contextual.add_command(label="Modo Oscuro", command=Modo_Oscuro)
 menu_contextual.add_command(label="Modo Claro",  command=Modo_Claro)
 
 # ===================== MARCAR FAV =====================
+def cargar_url(url):
+    barra.entrada_var.set(url)   # pone la URL en el campo de búsqueda
+    barra.iniciar_busqueda()
+
 def AñadirFav():
     urlactual = barra.entrada_var.get().strip()
-    if urlactual:
-        menu_savedurl.add_command(label=urlactual)
+    if menu_savedurl.index("end") is None:
+        cantidad = 0
+    else:
+        cantidad = menu_savedurl.index("end") + 1
+
+    if cantidad < 10:
+            menu_savedurl.add_command(label=urlactual
+            ,command=lambda url=urlactual: cargar_url(url))
+    else:
+        messagebox.showerror("Error", "No puede tener más de 10 URL Favoritas")
 
 fav_btn = ttk.Button(buttons_frame, text="Añadir URL Favorito", command=AñadirFav)
+fav_btn.config(state="disabled")
 fav_btn.pack(side="left", padx=3)
 
 # ===================== URL GUARDADAS =====================
@@ -196,7 +209,8 @@ barra = BarraBusqueda(
     style=style,
     area_contenido=area_contenido,
     botones_habilitar=[boton_guardar_archivo, boton_guardar_comonuevo],
-    boton_editar=boton_editar_archivo
+    boton_editar=boton_editar_archivo,
+    botones_requieren_texto=[fav_btn]
 )
 barra.top_frame.grid(in_=top_bar, row=0, column=0, sticky="ew")
 
