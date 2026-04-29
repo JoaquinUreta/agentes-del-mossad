@@ -5,7 +5,7 @@ from Renderizador import RenderizadorParser
 
 class BarraBusqueda:
     def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None):
- 
+
         self.parent = parent
         self.style = style
         self.area_contenido = area_contenido
@@ -14,38 +14,34 @@ class BarraBusqueda:
         self.ruta_actual = ""
 
         # ── Variables ────────────────────────────────────────────────
-        self.entrada_var   = tk.StringVar()
+        self.entrada_var    = tk.StringVar()
         self.barra_progreso = tk.StringVar()
 
-        # ── Top frame (Botón Izq + Entry + Botón Ir) ─────────────────
+        # ── Top frame (Botón Reload + Entry + Botón Ir) ──────────────
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
-        self.top_frame.columnconfigure(0, weight=0)  # botón izquierdo
+        self.top_frame.columnconfigure(0, weight=0)  # botón reload
         self.top_frame.columnconfigure(1, weight=1)  # entry
         self.top_frame.columnconfigure(2, weight=0)  # botón Ir
 
+        # ── Estilos ──────────────────────────────────────────────────
         self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
         self.style.map(
             "button.TButton",
             background=[("active", "#E4E2E2")],
             foreground=[("active", "#000")]
         )
-        def recArgar():
-            self.iniciar_busqueda()
-        # Botón izquierdo (sin función por ahora)
+        self.style.configure("entry.TEntry", fieldbackground="#FFFFFF", foreground="#000")
+
+        # ── Botón Recargar ───────────────────────────────────────────
         self.button_izq = ttk.Button(
             self.top_frame,
-            text="⟳" ,
+            text="⟳",
             style="button.TButton",
-            command=recArgar
+            command=self.iniciar_busqueda
         )
         self.button_izq.grid(row=0, column=0, padx=(0, 5))
-        
-        # ── Top frame (Entry + Botón Ir) ─────────────────────────────
-        self.top_frame = tk.Frame(parent, bg="#E4E2E2")
-        self.top_frame.columnconfigure(0, weight=1)
-        self.top_frame.columnconfigure(1, weight=0)
 
-        self.style.configure("entry.TEntry", fieldbackground="#FFFFFF", foreground="#000")
+        # ── Entry de búsqueda ────────────────────────────────────────
         self.frame_buscador = ttk.Entry(
             self.top_frame,
             style="entry.TEntry",
@@ -54,16 +50,7 @@ class BarraBusqueda:
         )
         self.frame_buscador.grid(row=0, column=1, sticky="ew", padx=(0, 5))
 
-            textvariable=self.entrada_var
-        )
-        self.frame_buscador.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-
-        self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
-        self.style.map(
-            "button.TButton",
-            background=[("active", "#E4E2E2")],
-            foreground=[("active", "#000")]
-        )
+        # ── Botón Ir ─────────────────────────────────────────────────
         self.button_ir = ttk.Button(
             self.top_frame,
             text="Ir",
@@ -72,7 +59,6 @@ class BarraBusqueda:
             command=self.iniciar_busqueda
         )
         self.button_ir.grid(row=0, column=2)
-        self.button_ir.grid(row=0, column=1)
 
         # ── Barra de estado ──────────────────────────────────────────
         self.estado_label = tk.Label(
@@ -94,27 +80,26 @@ class BarraBusqueda:
         # ── Trace para habilitar/deshabilitar botón Ir ───────────────
         self.entrada_var.trace_add("write", self._verificar_barra)
 
-
     def _verificar_barra(self, *args):
-        #Habilita el botón Ir sólo si el Entry tiene texto.
+        """Habilita el botón Ir sólo si el Entry tiene texto."""
         texto = self.entrada_var.get().strip()
         self.button_ir.config(state="normal" if texto else "disabled")
 
     def iniciar_busqueda(self):
-        #Arranca la animación de carga y programa la búsqueda.
+        """Arranca la animación de carga y programa la búsqueda."""
         self.barra_progreso.set("Buscando...")
         self.progress.start(10)
         self.parent.after(3000, self._ejecutar_proceso)
 
     def _ejecutar_proceso(self):
-        #Detiene la animación y llama a la validación/renderizado.
+        """Detiene la animación y llama a la validación/renderizado."""
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
         self.verificar_existencia()
         self.barra_progreso.set("Listo")
 
     def verificar_existencia(self):
-        #Valida la ruta y renderiza el archivo HTML en area_contenido.
+        """Valida la ruta y renderiza el archivo en area_contenido."""
         import os
         texto = self.entrada_var.get().strip()
 
@@ -152,7 +137,6 @@ class BarraBusqueda:
         return self.ruta_actual
 
     def actualizar_tema(self, bg_frame, bg_entry, fg_entry, bg_boton, fg_boton, active_bg):
-
         self.top_frame.config(bg=bg_frame)
         self.style.configure("entry.TEntry",
                               fieldbackground=bg_entry,
