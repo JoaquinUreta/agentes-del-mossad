@@ -73,7 +73,7 @@ main_area.grid(row=0, column=1, sticky="nsew")
 area_contenido = tk.Text(main_area, state="disabled")
 area_contenido.pack(expand=True, fill="both", padx=20, pady=10)
 
-# ===================== FRAME DE BOTONES (fila 1, debajo de la búsqueda) =====================
+# ===================== FRAME DE BOTONES =====================
 buttons_frame = tk.Frame(top_bar, bg="#E4E2E2")
 buttons_frame.grid(row=1, column=0, sticky="e", pady=(3, 0))
 

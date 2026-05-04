@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 
-
 class BarraBusqueda:
     def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None):
 
@@ -17,12 +16,14 @@ class BarraBusqueda:
         # ── Variables ────────────────────────────────────────────────
         self.entrada_var    = tk.StringVar()
         self.barra_progreso = tk.StringVar()
+        self.modo_busqueda  = tk.StringVar(value="Local")  # "Local" u "Online"
 
-        # ── Top frame (Botón Reload + Entry + Botón Ir) ──────────────
+        # ── Top frame (Botón Reload + Modo Búsqueda + Entry + Botón Ir) ──
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
         self.top_frame.columnconfigure(0, weight=0)  # botón reload
-        self.top_frame.columnconfigure(1, weight=1)  # entry
-        self.top_frame.columnconfigure(2, weight=0)  # botón Ir
+        self.top_frame.columnconfigure(1, weight=0)  # botón modo búsqueda
+        self.top_frame.columnconfigure(2, weight=1)  # entry
+        self.top_frame.columnconfigure(3, weight=0)  # botón Ir
 
         # ── Estilos ──────────────────────────────────────────────────
         self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
@@ -38,9 +39,24 @@ class BarraBusqueda:
             self.top_frame,
             text="⟳",
             style="button.TButton",
-            command=self.iniciar_busqueda  
+            command=self.iniciar_busqueda
         )
         self.button_izq.grid(row=0, column=0, padx=(0, 5))
+
+        # ── Botón Modo de Búsqueda ───────────────────────────────────
+        self.button_mode = ttk.Menubutton(
+            self.top_frame,
+            text="Modo de Búsqueda",
+            style="Custom.TMenubutton"
+        )
+        menumode = tk.Menu(
+            self.button_mode,
+            tearoff=0
+        )
+        self.button_mode.grid(row=0, column=1, padx=(0, 5))
+        self.button_mode["menu"] = menumode
+        menumode.add_command(label="Búsqueda Local",  command=lambda: self._cambiar_modo("Local"))
+        menumode.add_command(label="Búsqueda Online", command=lambda: self._cambiar_modo("Online"))
 
         # ── Entry de búsqueda ────────────────────────────────────────
         self.frame_buscador = ttk.Entry(
@@ -49,7 +65,7 @@ class BarraBusqueda:
             textvariable=self.entrada_var,
             width=60
         )
-        self.frame_buscador.grid(row=0, column=1, sticky="ew", padx=(0, 5))
+        self.frame_buscador.grid(row=0, column=2, sticky="ew", padx=(0, 5))
 
         # ── Botón Ir ─────────────────────────────────────────────────
         self.button_ir = ttk.Button(
@@ -59,7 +75,29 @@ class BarraBusqueda:
             state="disabled",
             command=self.iniciar_busqueda
         )
-        self.button_ir.grid(row=0, column=2)
+        self.button_ir.grid(row=0, column=3)
+
+        # ── Indicador Online / Offline ────────────────────────────────
+        self.estado_frame = tk.Frame(self.top_frame, bg="#E4E2E2")
+        self.estado_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 0))
+
+        self.canvas_circulo = tk.Canvas(
+            self.estado_frame,
+            width=12, height=12,
+            bg="#E4E2E2",
+            highlightthickness=0
+        )
+        self.canvas_circulo.pack(side="left", padx=(0, 4))
+        self.circulo = self.canvas_circulo.create_oval(1, 1, 11, 11, fill="#D9534F", outline="")
+
+        self.label_modo = tk.Label(
+            self.estado_frame,
+            text="Offline",
+            bg="#E4E2E2",
+            fg="#555555",
+            font=("Segoe UI", 8)
+        )
+        self.label_modo.pack(side="left")
 
         # ── Barra de estado ──────────────────────────────────────────
         self.estado_label = tk.Label(
@@ -80,6 +118,17 @@ class BarraBusqueda:
 
         # ── Trace para habilitar/deshabilitar botón Ir ───────────────
         self.entrada_var.trace_add("write", self._verificar_barra)
+
+    # ── Cambio de modo ────────────────────────────────────────────────
+    def _cambiar_modo(self, modo: str):
+        """Actualiza el indicador visual según el modo elegido."""
+        self.modo_busqueda.set(modo)
+        if modo == "Online":
+            self.canvas_circulo.itemconfig(self.circulo, fill="#5CB85C")  # verde
+            self.label_modo.config(text="Online")
+        else:
+            self.canvas_circulo.itemconfig(self.circulo, fill="#D9534F")  # rojo
+            self.label_modo.config(text="Offline")
 
     def _verificar_barra(self, *args):
         """Habilita el botón Ir y botones_requieren_texto sólo si el Entry tiene texto."""
@@ -140,8 +189,15 @@ class BarraBusqueda:
     def get_ruta_actual(self):
         return self.ruta_actual
 
+    def get_modo_busqueda(self):
+        """Devuelve el modo actual: 'Local' u 'Online'."""
+        return self.modo_busqueda.get()
+
     def actualizar_tema(self, bg_frame, bg_entry, fg_entry, bg_boton, fg_boton, active_bg):
         self.top_frame.config(bg=bg_frame)
+        self.estado_frame.config(bg=bg_frame)
+        self.canvas_circulo.config(bg=bg_frame)
+        self.label_modo.config(bg=bg_frame, fg=fg_boton)
         self.style.configure("entry.TEntry",
                               fieldbackground=bg_entry,
                               foreground=fg_entry)
