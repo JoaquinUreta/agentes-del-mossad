@@ -22,7 +22,6 @@ ancho_monitor = main.winfo_screenwidth()
 alto_monitor  = main.winfo_screenheight()
 ancho = ancho_monitor - 2 * margen
 alto  = alto_monitor  - 2 * margen
-
 if sistema == "Windows":
     main.state("zoomed")
 else:
@@ -176,19 +175,28 @@ menu_contextual.add_command(label="Modo Claro",  command=Modo_Claro)
 
 # ===================== MARCAR FAV =====================
 def cargar_url(url):
-    barra.entrada_var.set(url)   # pone la URL en el campo de búsqueda
+    barra.entrada_var.set(url)
     barra.iniciar_busqueda()
 
 def AñadirFav():
     urlactual = barra.entrada_var.get().strip()
-    if menu_savedurl.index("end") is None:
-        cantidad = 0
-    else:
+
+    if not urlactual:
+        return
+
+    # Revisar duplicados
+    try:
         cantidad = menu_savedurl.index("end") + 1
+        for i in range(cantidad):
+            if menu_savedurl.entrycget(i, "label") == urlactual:
+                messagebox.showwarning("Aviso", "Esta URL ya está en favoritos")
+                return
+    except:
+        cantidad = 0
 
     if cantidad < 10:
-            menu_savedurl.add_command(label=urlactual
-            ,command=lambda url=urlactual: cargar_url(url))
+        menu_savedurl.add_command(label=urlactual,
+                                  command=lambda url=urlactual: cargar_url(url))
     else:
         messagebox.showerror("Error", "No puede tener más de 10 URL Favoritas")
 
@@ -210,7 +218,8 @@ barra = BarraBusqueda(
     area_contenido=area_contenido,
     botones_habilitar=[boton_guardar_archivo, boton_guardar_comonuevo],
     boton_editar=boton_editar_archivo,
-    botones_requieren_texto=[fav_btn]
+    botones_requieren_texto=[fav_btn],
+    botones_solo_local=[boton_editar_archivo, boton_guardar_archivo, boton_guardar_comonuevo]
 )
 barra.top_frame.grid(in_=top_bar, row=0, column=0, sticky="ew")
 

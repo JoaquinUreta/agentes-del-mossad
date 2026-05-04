@@ -38,7 +38,20 @@ class RenderizadorParser(HTMLParser):
         self._mostrar_en_area()
 
         return self.salida
+    
+    def renderizar_desde_string(self, html_string, ruta_base=""):
+        """
+        Procesa un string HTML directamente (sin leer archivo).
+        ruta_base: carpeta raíz para resolver links relativos.
+        """
+        self.salida = []
+        self.ruta_actual = os.path.abspath(ruta_base) if ruta_base else os.getcwd()
 
+        self.feed(html_string)
+        self._mostrar_en_area()
+
+        return self.salida
+    
     def _mostrar_en_area(self):
         """
         Inserta el contenido procesado en el área de texto
