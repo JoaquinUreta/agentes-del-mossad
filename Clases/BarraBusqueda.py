@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
+from Historial import Historial
 
 
 class BarraBusqueda:
-    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None):
+    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None,guardar_historial=None):
 
         self.parent = parent
         self.style = style
@@ -15,6 +16,7 @@ class BarraBusqueda:
         self.botones_requieren_texto = botones_requieren_texto or []
         self.botones_solo_local = botones_solo_local or []
         self.ruta_actual = ""
+        self.guardar_historial=guardar_historial
 
         # ── Variables ────────────────────────────────────────────────
         self.entrada_var    = tk.StringVar()
@@ -181,6 +183,8 @@ class BarraBusqueda:
                 if status == 200:
                     self.barra_progreso.set(f"200 OK — {texto}")
                     parser.renderizar_desde_string(html_string, ruta_base="")
+                    if self.guardar_historial:
+                        self.guardar_historial()
                     for boton in self.botones_habilitar:
                         boton.config(state="normal")
                     if self.boton_editar:
@@ -223,7 +227,8 @@ class BarraBusqueda:
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
-
+            if self.guardar_historial:
+                self.guardar_historial()
             for boton in self.botones_habilitar:
                 boton.config(state="normal")
             if self.boton_editar:
