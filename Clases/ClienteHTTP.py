@@ -11,6 +11,8 @@ class ClienteHTTP:
 
         try:
             conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
+            #conn = http.client.HTTPSConnection(host,80, timeout=timeout)
+            #El puerto 80 no funciona
             conn.request("GET", path)
             response = conn.getresponse()
             status = response.status

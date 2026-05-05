@@ -211,6 +211,11 @@ savedurl_btn.pack(side="left", padx=3)
 menu_savedurl = tk.Menu(savedurl_btn, tearoff=0)
 savedurl_btn["menu"] = menu_savedurl
 
+#=========== Boton Historial ============================
+
+
+
+
 # ===================== BARRA DE BÚSQUEDA =====================
 barra = BarraBusqueda(
     parent=main,
