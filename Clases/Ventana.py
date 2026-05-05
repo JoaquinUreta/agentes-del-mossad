@@ -6,6 +6,7 @@ from tkinter import messagebox
 from tkinter import filedialog
 from Renderizador import RenderizadorParser
 from BarraBusqueda import BarraBusqueda
+from Historial import Historial
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -29,6 +30,7 @@ else:
 
 main.minsize(600, 400)
 main.resizable(True, True)
+historial=Historial()
 
 # ===================== Style =====================
 style = ttk.Style(main)
@@ -177,6 +179,7 @@ menu_contextual.add_command(label="Modo Claro",  command=Modo_Claro)
 def cargar_url(url):
     barra.entrada_var.set(url)
     barra.iniciar_busqueda()
+    guardar_menuhistorial()
 
 def AñadirFav():
     urlactual = barra.entrada_var.get().strip()
@@ -211,6 +214,35 @@ savedurl_btn.pack(side="left", padx=3)
 menu_savedurl = tk.Menu(savedurl_btn, tearoff=0)
 savedurl_btn["menu"] = menu_savedurl
 
+#====== Historial Guardado =========================
+#1.Despues de que verifique URl
+#2.Mandar url a clase Historial
+#3.Usar agregar_historial para guardar el elemento
+#4.Que compruebe la cantidad de elementos y si el URL esta duplicado
+#5.Recibir la lista por obtener_url y dejarla guardada en el menu historial de Clase ventana
+def guardar_menuhistorial():
+    urlactual = barra.entrada_var.get().strip()
+    if not urlactual:
+        return
+    historial.agregar_historial(urlactual)
+    actualizar_historial()
+
+def actualizar_historial():
+ menu_historial.delete(0,"end")
+ indice=0
+ while True:
+     url=historial.obtener_url(indice)
+     if url is None:
+         break
+     menu_historial.add_command(label=url,command=lambda u=url:cargar_url(u))
+     indice+=1
+
+#=========== Boton Historial =================================
+boton_historial= ttk.Menubutton(buttons_frame, text="Historial", style="Custom.TMenubutton")
+boton_historial.pack(side="left", padx=4)
+menu_historial=tk.Menu(boton_historial,tearoff=0)
+boton_historial["menu"] = menu_historial
+
 # ===================== BARRA DE BÚSQUEDA =====================
 barra = BarraBusqueda(
     parent=main,
@@ -219,7 +251,8 @@ barra = BarraBusqueda(
     botones_habilitar=[boton_guardar_archivo, boton_guardar_comonuevo],
     boton_editar=boton_editar_archivo,
     botones_requieren_texto=[fav_btn],
-    botones_solo_local=[boton_editar_archivo, boton_guardar_archivo, boton_guardar_comonuevo]
+    botones_solo_local=[boton_editar_archivo, boton_guardar_archivo, boton_guardar_comonuevo],
+    guardar_historial=guardar_menuhistorial
 )
 barra.top_frame.grid(in_=top_bar, row=0, column=0, sticky="ew")
 
