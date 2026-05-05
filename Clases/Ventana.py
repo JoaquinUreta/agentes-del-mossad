@@ -48,7 +48,6 @@ top_bar.columnconfigure(0, weight=1)
 # ===================== CONTENT =====================
 content_frame = tk.Frame(main, bg="#EDECEC")
 content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-
 content_frame.columnconfigure(0, weight=0)
 content_frame.columnconfigure(1, weight=1)
 content_frame.rowconfigure(0, weight=1)
@@ -193,10 +192,9 @@ def AñadirFav():
                 return
     except:
         cantidad = 0
-
     if cantidad < 10:
         menu_savedurl.add_command(label=urlactual,
-                                  command=lambda url=urlactual: cargar_url(url))
+                                command=lambda url=urlactual: cargar_url(url))
     else:
         messagebox.showerror("Error", "No puede tener más de 10 URL Favoritas")
 

@@ -21,6 +21,7 @@ class BarraBusqueda:
         self.barra_progreso = tk.StringVar()
         self.modo_busqueda  = tk.StringVar(value="Local")
         self.Status = False
+        self.url_correcta = 0
 
         # ── Top frame ────────────────────────────────────────────────
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
@@ -139,7 +140,6 @@ class BarraBusqueda:
             # Rehabilitar botones solo si hay un archivo abierto
             for boton in self.botones_solo_local:
                 boton.config(state="normal" if self.ruta_actual else "disabled")
-
     def _verificar_barra(self, *args):
         texto = self.entrada_var.get().strip()
         estado = "normal" if texto else "disabled"
@@ -148,10 +148,31 @@ class BarraBusqueda:
             boton.config(state=estado)
 
     def iniciar_busqueda(self):
-        self.barra_progreso.set("Buscando...")
-        self.progress.start(10)
-        self.parent.after(3000, self._ejecutar_proceso)
+        if self.Status == True:
+            if self.url_correcta == 1:
+                self.barra_progreso.set("Buscando...")
+                self.progress.start(10)
+                self.parent.after(3000, self._ejecutar_proceso)
+            if self.url_correcta == 0:
+                messagebox.showerror("error de entrada", "la URL no tiene el formato correcto")
+        if self.Status == False:
+            self.barra_progreso.set("Buscando...")
+            self.progress.start(10)
+            self.parent.after(3000, self._ejecutar_proceso)
 
+    def URL_absoluta(self):
+        if self.entrada_var.get.split("://")[0] == "http" or self.entrada_var.get.split("://")[0] == "https":
+            self.url_correcta=set_url_estado(self)
+        url_separada_v2 = self.entrada_var.get().split(".")
+        extencion = url_separada_v2[-1]
+        if extencion != "com" or extencion != "cl":
+            messagebox.showerror("error de entrada", "la URL localhost no tiene el formato correcto")
+        
+        def set_url_estado(self):
+            if self.url_correcta==1:
+                self.url_correcta=0
+            if self.url_correcta==0:
+                self.url_correcta=1
     def _ejecutar_proceso(self):
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
