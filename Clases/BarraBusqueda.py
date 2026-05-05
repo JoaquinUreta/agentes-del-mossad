@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
-from Historial import Historial
 
 
 class BarraBusqueda:

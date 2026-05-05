@@ -183,7 +183,6 @@ def cargar_url(url):
 
 def AñadirFav():
     urlactual = barra.entrada_var.get().strip()
-
     if not urlactual:
         return
 
@@ -215,19 +214,14 @@ menu_savedurl = tk.Menu(savedurl_btn, tearoff=0)
 savedurl_btn["menu"] = menu_savedurl
 
 #====== Historial Guardado =========================
-#1.Despues de que verifique URl
-#2.Mandar url a clase Historial
-#3.Usar agregar_historial para guardar el elemento
-#4.Que compruebe la cantidad de elementos y si el URL esta duplicado
-#5.Recibir la lista por obtener_url y dejarla guardada en el menu historial de Clase ventana
-def guardar_menuhistorial():
+def guardar_menuhistorial():#Guardar url usando clase Historal
     urlactual = barra.entrada_var.get().strip()
     if not urlactual:
         return
     historial.agregar_historial(urlactual)
     actualizar_historial()
 
-def actualizar_historial():
+def actualizar_historial():#Actualiza menu del boton Historial
  menu_historial.delete(0,"end")
  indice=0
  while True:
