@@ -204,12 +204,40 @@ fav_btn = ttk.Button(buttons_frame, text="Añadir URL Favorito", command=Añadir
 fav_btn.config(state="disabled")
 fav_btn.pack(side="left", padx=3)
 
+def cargar_urls_default():
+    urls_default = [
+        "https://example.com",
+        "https://example.org",
+        "https://example.net",
+        "https://httpbin.org/get",
+        "https://www.iana.org/domains/reserved",
+        "https://info.cern.ch",          # La primera página web de la historia
+        "https://text.npr.org",          # NPR en solo texto
+        "https://lite.cnn.com",
+    ]
+    for url in urls_default:
+        try:
+            cantidad = menu_savedurl.index("end") + 1
+        except:
+            cantidad = 0
+        # Revisar duplicados
+        ya_existe = False
+        for i in range(cantidad):
+            if menu_savedurl.entrycget(i, "label") == url:
+                ya_existe = True
+                break
+        if not ya_existe and cantidad < 10:
+            menu_savedurl.add_command(label=url,
+                                      command=lambda u=url: cargar_url(u))
+
+
 # ===================== URL GUARDADAS =====================
 savedurl_btn = ttk.Menubutton(buttons_frame, text="URL Guardadas", style="Custom.TMenubutton")
 savedurl_btn.pack(side="left", padx=3)
 
 menu_savedurl = tk.Menu(savedurl_btn, tearoff=0)
 savedurl_btn["menu"] = menu_savedurl
+cargar_urls_default()
 
 #====== Historial Guardado =========================
 def guardar_menuhistorial():#Guardar url usando clase Historal
