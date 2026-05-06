@@ -149,31 +149,56 @@ class BarraBusqueda:
             boton.config(state=estado)
 
     def iniciar_busqueda(self):
-        if self.Status == True:
-            if self.url_correcta == 1:
+        formato_correcto, extencion_correcta = self.URL_absoluta()
+        if self.Status==True:
+            if formato_correcto and extencion_correcta:
                 self.barra_progreso.set("Buscando...")
                 self.progress.start(10)
                 self.parent.after(3000, self._ejecutar_proceso)
-            if self.url_correcta == 0:
-                messagebox.showerror("error de entrada", "la URL no tiene el formato correcto")
-        if self.Status == False:
+                return
+            if not formato_correcto:
+                messagebox.showerror("error de entrada", "La URL debe comenzar con http:// o https://")
+                return
+            if not extencion_correcta:
+                messagebox.showerror("error de entrada", "La URL no tiene una extensión válida")
+                return
+        else:
             self.barra_progreso.set("Buscando...")
             self.progress.start(10)
             self.parent.after(3000, self._ejecutar_proceso)
 
     def URL_absoluta(self):
-        if self.entrada_var.get.split("://")[0] == "http" or self.entrada_var.get.split("://")[0] == "https":
-            self.url_correcta=set_url_estado(self)
-        url_separada_v2 = self.entrada_var.get().split(".")
-        extencion = url_separada_v2[-1]
-        if extencion != "com" or extencion != "cl":
-            messagebox.showerror("error de entrada", "la URL localhost no tiene el formato correcto")
-        
-        def set_url_estado(self):
-            if self.url_correcta==1:
-                self.url_correcta=0
-            if self.url_correcta==0:
-                self.url_correcta=1
+        entrada = self.entrada_var.get().strip()
+        if not entrada:
+            return False, False
+        if not entrada.lower().startswith(("http://", "https://")):
+            entrada = "https://" + entrada
+            self.entrada_var.set(entrada)
+        if "://" not in entrada:
+            return False, False
+        esquema, resto = entrada.split("://", 1)
+        esquema = esquema.lower()
+        if esquema not in ("http", "https"):
+            return False, False
+        host_port, _, _ = resto.partition("/")
+        if not host_port:
+            return False, False
+        host, sep, port = host_port.partition(":")
+        host = host.lower()
+        if not host:
+            return False, False
+        if sep:
+            if not port.isdigit() or not (1 <= int(port) <= 65535):
+                return False, False
+        if host == "localhost":
+            return True, True
+        if "." not in host:
+            return False, False
+        extencion = host.split(".")[-1].lower()
+        if extencion in ["com", "org", "net", "io", "gov", "cl"]:
+            return True, True
+        return True, False
+
     def _ejecutar_proceso(self):
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
