@@ -1,21 +1,18 @@
 import http.client
 
 class ClienteHTTP:
+    def buscarurl(self, url, timeout=10):
+        # Detectar protocolo y limpiar la URL
+        if url.startswith("https://"):
+            usar_https = True
+            url = url[len("https://"):]
+        elif url.startswith("http://"):
+            usar_https = False
+            url = url[len("http://"):]
+        else:
+            usar_https = True  # Por defecto HTTPS si no especifica
 
-    def enviar_get(self, host, ruta):
-        conexion = http.client.HTTPConnection(host,80) #El host en teoria es el que nos dio el profe y el 80 se refiere al puerto
-
-        headers = {
-            "Host": host,
-            "User-Agent": "ClienteHTTP/1.0"
-        }
-        
-        #Esta es la solicitud como tal que enviara el codigo hacia el servidor.
-        conexion.request("GET", ruta, headers=headers) 
-
-        return conexion
-    
-    def buscarurl(self, url, timeout=10): 
+        # Separar host y path
         if "/" in url:
             host, path = url.split("/", 1)
             path = "/" + path
@@ -24,9 +21,11 @@ class ClienteHTTP:
             path = "/"
 
         try:
-            conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
-            #conn = http.client.HTTPSConnection(host,80, timeout=timeout)
-            #El puerto 80 no funciona
+            if usar_https:
+                conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
+            else:
+                conn = http.client.HTTPConnection(host, 80, timeout=timeout)
+
             conn.request("GET", path)
             response = conn.getresponse()
             status = response.status
@@ -36,6 +35,5 @@ class ClienteHTTP:
 
         except TimeoutError:
             return "<h1>Tiempo de espera agotado</h1>", None
-
         except Exception as e:
             return f"<h1>Error al conectar</h1><p>{e}</p>", None
