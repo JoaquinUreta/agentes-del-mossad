@@ -5,7 +5,7 @@ from ClienteHTTP import ClienteHTTP
 
 
 class BarraBusqueda:
-    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None,guardar_historial=None):
+    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None, guardar_historial=None):
 
         self.parent = parent
         self.style = style
@@ -15,13 +15,18 @@ class BarraBusqueda:
         self.botones_requieren_texto = botones_requieren_texto or []
         self.botones_solo_local = botones_solo_local or []
         self.ruta_actual = ""
-        self.guardar_historial=guardar_historial
+        self.guardar_historial = guardar_historial
+
+        # ── Callback para actualizar el título de la pestaña ─────────
+        # El GestorPestañas lo asigna al crear cada Pestaña.
+        # Firma: on_titulo_cambio(nuevo_titulo: str)
+        self.on_titulo_cambio = None
 
         # ── Variables ────────────────────────────────────────────────
         self.entrada_var    = tk.StringVar()
         self.barra_progreso = tk.StringVar()
-        self.modo_busqueda  = tk.StringVar(value="Local")
-        self.Status = False
+        self.modo_busqueda  = tk.StringVar(value="Online")
+        self.Status = True
         self.url_correcta = 0
 
         # ── Top frame ────────────────────────────────────────────────
@@ -52,7 +57,7 @@ class BarraBusqueda:
         # ── Botón Modo de Búsqueda ───────────────────────────────────
         self.button_mode = ttk.Menubutton(
             self.top_frame,
-            text="Local",
+            text="Online",
             style="Custom.TMenubutton"
         )
         menumode = tk.Menu(self.button_mode, tearoff=0)
@@ -91,11 +96,11 @@ class BarraBusqueda:
             highlightthickness=0
         )
         self.canvas_circulo.pack(side="left", padx=(0, 4))
-        self.circulo = self.canvas_circulo.create_oval(1, 1, 11, 11, fill="#D9534F", outline="")
+        self.circulo = self.canvas_circulo.create_oval(1, 1, 11, 11, fill="#5CB85C", outline="")
 
         self.label_modo = tk.Label(
             self.estado_frame,
-            text="Offline",
+            text="Online",
             bg="#E4E2E2",
             fg="#555555",
             font=("Segoe UI", 8)
@@ -122,6 +127,9 @@ class BarraBusqueda:
         # ── Trace ────────────────────────────────────────────────────
         self.entrada_var.trace_add("write", self._verificar_barra)
 
+        # ── Enter dispara búsqueda solo si hay texto ─────────────────
+        self.frame_buscador.bind("<Return>", self._enter_busqueda)
+
     # ── Cambio de modo ────────────────────────────────────────────────
     def _cambiar_modo(self, modo: str):
         self.modo_busqueda.set(modo)
@@ -130,7 +138,6 @@ class BarraBusqueda:
             self.label_modo.config(text="Online")
             self.button_mode.configure(text="Online")
             self.Status = True
-            # Deshabilitar botones de edición local
             for boton in self.botones_solo_local:
                 boton.config(state="disabled")
         else:
@@ -138,9 +145,9 @@ class BarraBusqueda:
             self.label_modo.config(text="Local")
             self.button_mode.configure(text="Local")
             self.Status = False
-            # Rehabilitar botones solo si hay un archivo abierto
             for boton in self.botones_solo_local:
                 boton.config(state="normal" if self.ruta_actual else "disabled")
+
     def _verificar_barra(self, *args):
         texto = self.entrada_var.get().strip()
         estado = "normal" if texto else "disabled"
@@ -148,9 +155,14 @@ class BarraBusqueda:
         for boton in self.botones_requieren_texto:
             boton.config(state=estado)
 
+    def _enter_busqueda(self, event=None):
+        """Dispara la búsqueda al presionar Enter, solo si la barra tiene texto."""
+        if self.entrada_var.get().strip():
+            self.iniciar_busqueda()
+
     def iniciar_busqueda(self):
         formato_correcto, extencion_correcta = self.URL_absoluta()
-        if self.Status==True:
+        if self.Status == True:
             if formato_correcto and extencion_correcta:
                 self.barra_progreso.set("Buscando...")
                 self.progress.start(10)
@@ -171,6 +183,12 @@ class BarraBusqueda:
         entrada = self.entrada_var.get().strip()
         if not entrada:
             return False, False
+
+        # En modo Local no se toca la entrada: es una ruta de archivo
+        if not self.Status:
+            return True, True
+
+        # ── Solo modo Online: completar y validar esquema ─────────────
         if not entrada.lower().startswith(("http://", "https://")):
             entrada = "https://" + entrada
             self.entrada_var.set(entrada)
@@ -202,11 +220,16 @@ class BarraBusqueda:
     def _ejecutar_proceso(self):
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
-        resultado = self.verificar_existencia()  # recibe el estado
-        # Solo sobreescribe la barra si NO estamos en modo Online
-        # (en Online, verificar_existencia ya puso 200 OK / 404 / error)
+        resultado = self.verificar_existencia()
         if not self.Status:
             self.barra_progreso.set("Listo" if resultado else "Error")
+
+    def _notificar_titulo(self, texto):
+        """Llama al callback de título si está configurado."""
+        if self.on_titulo_cambio:
+            # Recorta a 30 caracteres para que quepa en la pestaña
+            titulo = texto[:30] + ("…" if len(texto) > 30 else "")
+            self.on_titulo_cambio(titulo)
 
     def verificar_existencia(self):
         import os
@@ -228,12 +251,13 @@ class BarraBusqueda:
                 if status == 200:
                     self.barra_progreso.set(f"200 OK — {texto}")
                     parser.renderizar_desde_string(html_string, ruta_base="")
+                    self._notificar_titulo(texto)
                     if self.guardar_historial:
                         self.guardar_historial()
                     for boton in self.botones_habilitar:
                         boton.config(state="normal")
                     if self.boton_editar:
-                        self.boton_editar.config(state="normal")
+                        self.boton_editar.config(state="disabled")  # online: no editable
                     return True
 
                 elif status == 404:
@@ -272,13 +296,13 @@ class BarraBusqueda:
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
+            self._notificar_titulo(os.path.basename(texto))  # ← actualiza título pestaña
             if self.guardar_historial:
                 self.guardar_historial()
             for boton in self.botones_habilitar:
                 boton.config(state="normal")
             if self.boton_editar:
-                es_html = texto.lower().endswith(".html")
-                self.boton_editar.config(state="disabled" if es_html else "normal")
+                self.boton_editar.config(state="normal")
             return True
 
         except Exception as e:
