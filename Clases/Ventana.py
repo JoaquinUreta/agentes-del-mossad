@@ -213,7 +213,6 @@ class GestorPestañas:
         self.pestañas: list[Pestaña] = []
         self._tema_oscuro   = False
 
-        self._historial_global   = Historial(limitante=20)
         self._menu_historial_ref = None
 
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
@@ -237,7 +236,7 @@ class GestorPestañas:
             style=self.style,
             buttons_frame_global=self.buttons_frame,
             menu_savedurl=self.menu_savedurl,
-            menu_historial_global=self._actualizar_historial_global,
+            menu_historial_global=self._menu_historial_ref,
         )
         p.actualizar_tema(self._tema_oscuro)
         self.pestañas.append(p)
@@ -293,6 +292,8 @@ class GestorPestañas:
         activa = self.pestaña_activa()
         if activa:
             activa.mostrar_botones()
+        if self._menu_historial_ref:
+            self._menu_historial_ref()
 
     def cargar_url_en_activa(self, url: str):
         p = self.pestaña_activa()
@@ -394,9 +395,10 @@ class VentanaPrincipal:
 
     def _actualizar_menu_historial(self):
         self.menu_historial.delete(0, "end")
+        pestaña=self.gestor.pestaña_activa()
         indice = 0
         while True:
-            url = self.gestor._historial_global.obtener_url(indice)
+            url = pestaña.historial.obtener_url(indice) 
             if url is None:
                 break
             self.menu_historial.add_command(
