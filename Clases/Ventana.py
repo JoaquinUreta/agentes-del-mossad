@@ -252,7 +252,32 @@ class GestorPestañas:
         if p is None:
             return
         p.ocultar_botones()
-        self.notebook.forget(p.frame)
+        # Oculta botones de la pestaña
+        p.ocultar_botones()
+
+        # Detener posibles animaciones/progreso
+        try:
+            p.barra.progress.stop()
+        except:
+            pass
+
+        # Limpiar contenido del área de texto
+        try:
+            p.area_contenido.config(state="normal")
+            p.area_contenido.delete("1.0", "end")
+            p.area_contenido.config(state="disabled")
+        except:
+            pass
+
+        # Eliminar widgets visuales
+        p.frame.destroy()
+
+        # Limpiar referencias importantes
+        p.historial = None
+        p.barra = None
+        p.area_contenido = None
+
+        # Sacar de la lista interna
         self.pestañas.remove(p)
 
     def pestaña_activa(self):
