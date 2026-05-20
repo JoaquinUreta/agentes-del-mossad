@@ -5,8 +5,53 @@ from ClienteHTTP import ClienteHTTP
 
 
 class BarraBusqueda:
-    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None, guardar_historial=None):
+    """
+    Componente de interfaz que representa la barra de navegación del explorador.
+    Incluye un campo de texto para ingresar URLs o rutas, botones de acción,
+    un selector de modo (Online/Local), un indicador visual de estado de conexión,
+    una barra de progreso y una etiqueta de estado inferior.
 
+    Se comunica con RenderizadorParser para mostrar el HTML en el área de contenido
+    y con ClienteHTTP para realizar peticiones web en modo Online.
+    """
+
+    def __init__(self, parent, style, area_contenido, botones_habilitar=None,
+                 boton_editar=None, botones_requieren_texto=None,
+                 botones_solo_local=None, guardar_historial=None):
+        """
+        Inicializa todos los widgets de la barra de búsqueda y los coloca
+        en el frame padre.
+
+        Parámetros:
+            parent (tk.Frame): Frame contenedor donde se colocarán los widgets.
+            style (ttk.Style): Objeto de estilos de tkinter para personalizar apariencia.
+            area_contenido (tk.Text): Widget de texto donde se renderiza el HTML.
+            botones_habilitar (list): Botones que se habilitarán tras una carga exitosa
+                                      (ej. Guardar, Guardar Como).
+            boton_editar (ttk.Button | None): Botón "Editar Archivo"; se habilita solo
+                                              en modo Local y se deshabilita en Online.
+            botones_requieren_texto (list): Botones que se habilitan solo cuando hay
+                                           texto en la barra (ej. Añadir Favorito).
+            botones_solo_local (list): Botones que solo están disponibles en modo Local.
+            guardar_historial (callable | None): Función callback que se llama tras
+                                                 una carga exitosa para registrar la URL.
+
+        Widgets creados:
+            top_frame: Frame principal que contiene los controles de navegación.
+            button_izq: Botón "⟳" para recargar/buscar la URL actual.
+            button_mode: Menú desplegable para cambiar entre modo Online y Local.
+            frame_buscador: Campo de texto (Entry) donde el usuario escribe la URL.
+            button_ir: Botón "Ir" que dispara la búsqueda (deshabilitado si no hay texto).
+            estado_frame: Frame con el indicador visual (círculo de color + label de modo).
+            canvas_circulo: Canvas con un óvalo verde (Online) o rojo (Local).
+            label_modo: Etiqueta que muestra el texto "Online" o "Local".
+            estado_label: Etiqueta inferior con mensajes de estado (SUNKEN relief).
+            progress: Barra de progreso indeterminada que se activa durante la carga.
+
+        Callbacks configurados:
+            on_titulo_cambio: Asignado externamente por GestorPestañas para actualizar
+                              el título de la pestaña cuando se carga una página.
+        """
         self.parent = parent
         self.style = style
         self.area_contenido = area_contenido
@@ -17,17 +62,17 @@ class BarraBusqueda:
         self.ruta_actual = ""
         self.guardar_historial = guardar_historial
 
-        # ── Callback para actualizar el título de la pestaña ─────────
+        # Callback para actualizar el título de la pestaña.
         # El GestorPestañas lo asigna al crear cada Pestaña.
         # Firma: on_titulo_cambio(nuevo_titulo: str)
         self.on_titulo_cambio = None
 
         # ── Variables ────────────────────────────────────────────────
-        self.entrada_var    = tk.StringVar()
-        self.barra_progreso = tk.StringVar()
-        self.modo_busqueda  = tk.StringVar(value="Online")
-        self.Status = True
-        self.url_correcta = 0
+        self.entrada_var    = tk.StringVar()   # Contenido del campo de texto
+        self.barra_progreso = tk.StringVar()   # Mensaje en la barra de estado inferior
+        self.modo_busqueda  = tk.StringVar(value="Online")  # Modo actual: "Online" o "Local"
+        self.Status = True         # True = Online, False = Local
+        self.url_correcta = 0      # Indicador auxiliar (no usado activamente)
 
         # ── Top frame ────────────────────────────────────────────────
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
@@ -125,13 +170,27 @@ class BarraBusqueda:
         )
 
         # ── Trace ────────────────────────────────────────────────────
+        # Observa cambios en el campo de texto para habilitar/deshabilitar botones
         self.entrada_var.trace_add("write", self._verificar_barra)
 
-        # ── Enter dispara búsqueda solo si hay texto ─────────────────
+        # Enter dispara búsqueda solo si hay texto en el campo
         self.frame_buscador.bind("<Return>", self._enter_busqueda)
 
-    # ── Cambio de modo ────────────────────────────────────────────────
     def _cambiar_modo(self, modo: str):
+        """
+        Cambia el modo de búsqueda entre "Online" y "Local" y actualiza
+        todos los elementos visuales e internos asociados al modo.
+
+        Parámetros:
+            modo (str): "Online" para búsqueda web, "Local" para archivos del sistema.
+
+        Comportamiento:
+            - Online: el círculo indicador se pone verde, self.Status = True,
+              y los botones exclusivos de Local se deshabilitan.
+            - Local: el círculo indicador se pone rojo, self.Status = False,
+              y los botones exclusivos de Local se habilitan solo si hay
+              una ruta actualmente cargada (self.ruta_actual).
+        """
         self.modo_busqueda.set(modo)
         if modo == "Online":
             self.canvas_circulo.itemconfig(self.circulo, fill="#5CB85C")
@@ -149,6 +208,19 @@ class BarraBusqueda:
                 boton.config(state="normal" if self.ruta_actual else "disabled")
 
     def _verificar_barra(self, *args):
+        """
+        Callback del trace en entrada_var: habilita o deshabilita el botón "Ir"
+        y los botones en botones_requieren_texto según si hay texto en el campo.
+
+        Parámetros:
+            *args: Argumentos estándar del trace de tkinter (nombre, índice, modo).
+                   No se usan directamente.
+
+        Comportamiento:
+            - Si el campo tiene texto (no vacío): habilita el botón "Ir" y los
+              botones en botones_requieren_texto.
+            - Si el campo está vacío: los deshabilita.
+        """
         texto = self.entrada_var.get().strip()
         estado = "normal" if texto else "disabled"
         self.button_ir.config(state=estado)
@@ -156,11 +228,33 @@ class BarraBusqueda:
             boton.config(state=estado)
 
     def _enter_busqueda(self, event=None):
-        """Dispara la búsqueda al presionar Enter, solo si la barra tiene texto."""
+        """
+        Manejador del evento <Return> (tecla Enter) en el campo de búsqueda.
+        Dispara la búsqueda únicamente si el campo contiene texto.
+
+        Parámetros:
+            event: Evento de tkinter (no se usa directamente).
+        """
         if self.entrada_var.get().strip():
             self.iniciar_busqueda()
 
     def iniciar_busqueda(self):
+        """
+        Punto de entrada principal para iniciar una búsqueda o carga de página.
+        Valida la URL (en modo Online) y, si es correcta, activa la barra de
+        progreso y programa la ejecución del proceso tras 3 segundos.
+
+        Proceso en modo Online:
+            1. Valida el formato y la extensión de la URL mediante URL_absoluta().
+            2. Si ambas son correctas, muestra "Buscando..." y activa la progress bar.
+            3. Programa _ejecutar_proceso() para ejecutarse después de 3000 ms.
+            4. Si el formato es incorrecto, muestra un error de "http:// o https://".
+            5. Si la extensión es inválida, muestra un error de extensión.
+
+        Proceso en modo Local:
+            - No valida la URL; simplemente activa la progress bar y programa
+              _ejecutar_proceso() directamente.
+        """
         formato_correcto, extencion_correcta = self.URL_absoluta()
         if self.Status == True:
             if formato_correcto and extencion_correcta:
@@ -180,6 +274,28 @@ class BarraBusqueda:
             self.parent.after(3000, self._ejecutar_proceso)
 
     def URL_absoluta(self):
+        """
+        Valida y normaliza la URL ingresada en el campo de búsqueda.
+        Solo aplica en modo Online; en modo Local siempre retorna (True, True).
+
+        Proceso:
+            1. Si el campo está vacío, retorna (False, False).
+            2. En modo Local, retorna (True, True) sin validación.
+            3. En modo Online:
+               a. Si falta el esquema (http:// o https://), lo agrega automáticamente
+                  como "https://" y actualiza el campo de texto.
+               b. Valida que el esquema sea "http" o "https".
+               c. Extrae host y puerto; valida que el host no esté vacío.
+               d. Si hay puerto, valida que sea un número entre 1 y 65535.
+               e. Verifica que el host contenga al menos un punto (excepto "localhost").
+               f. Comprueba que la extensión del dominio sea una de las permitidas:
+                  .com, .org, .net, .io, .gov, .cl
+
+        Retorna:
+            tuple(bool, bool):
+                - Primer bool: True si el formato del esquema y host es correcto.
+                - Segundo bool: True si la extensión del dominio es válida.
+        """
         entrada = self.entrada_var.get().strip()
         if not entrada:
             return False, False
@@ -188,7 +304,7 @@ class BarraBusqueda:
         if not self.Status:
             return True, True
 
-        # ── Solo modo Online: completar y validar esquema ─────────────
+        # Solo modo Online: completar y validar esquema
         if not entrada.lower().startswith(("http://", "https://")):
             entrada = "https://" + entrada
             self.entrada_var.set(entrada)
@@ -218,6 +334,17 @@ class BarraBusqueda:
         return True, False
 
     def _ejecutar_proceso(self):
+        """
+        Finaliza la animación de progreso y llama a verificar_existencia()
+        para procesar la URL. Actualiza la barra de estado con el resultado.
+
+        Proceso:
+            1. Detiene la barra de progreso indeterminada.
+            2. Muestra "Procesando datos..." en la barra de estado.
+            3. Llama a verificar_existencia() para cargar el contenido.
+            4. En modo Local, actualiza la barra de estado con "Listo" o "Error".
+               (En modo Online, verificar_existencia() ya actualiza el estado.)
+        """
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
         resultado = self.verificar_existencia()
@@ -225,13 +352,46 @@ class BarraBusqueda:
             self.barra_progreso.set("Listo" if resultado else "Error")
 
     def _notificar_titulo(self, texto):
-        """Llama al callback de título si está configurado."""
+        """
+        Invoca el callback on_titulo_cambio (si está configurado) para actualizar
+        el título de la pestaña con el texto proporcionado.
+
+        Parámetros:
+            texto (str): Texto que se usará como título (URL o nombre de archivo).
+                         Se recorta a 30 caracteres y se agrega "…" si es más largo.
+
+        Nota:
+            El callback on_titulo_cambio es asignado externamente por GestorPestañas.
+        """
         if self.on_titulo_cambio:
-            # Recorta a 30 caracteres para que quepa en la pestaña
             titulo = texto[:30] + ("…" if len(texto) > 30 else "")
             self.on_titulo_cambio(titulo)
 
     def verificar_existencia(self):
+        """
+        Carga y renderiza el contenido según el modo actual (Online o Local).
+
+        Modo Online:
+            1. Verifica que el campo no esté vacío.
+            2. Crea un ClienteHTTP y llama a buscarurl() con la URL ingresada.
+            3. Según el código de estado recibido:
+               - 200: Renderiza el HTML, notifica el título, guarda en historial,
+                      habilita botones y deshabilita el botón de editar.
+               - 404: Muestra error "Página no encontrada".
+               - None: Muestra error "No se pudo establecer conexión".
+               - Otro: Muestra advertencia con el código recibido.
+            4. En caso de excepción inesperada, muestra el mensaje de error.
+
+        Modo Local:
+            1. Verifica que el archivo exista en el sistema de archivos.
+            2. Si el archivo no termina en .html, pide confirmación al usuario.
+            3. Llama a parser.renderizar() con la ruta del archivo.
+            4. Notifica el título con el nombre base del archivo.
+            5. Guarda en historial, habilita botones y activa el botón de editar.
+
+        Retorna:
+            bool: True si la carga fue exitosa, False si ocurrió algún error.
+        """
         import os
         texto = self.entrada_var.get().strip()
         parser = RenderizadorParser(self.area_contenido)
@@ -296,7 +456,7 @@ class BarraBusqueda:
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
-            self._notificar_titulo(os.path.basename(texto))  # ← actualiza título pestaña
+            self._notificar_titulo(os.path.basename(texto))
             if self.guardar_historial:
                 self.guardar_historial()
             for boton in self.botones_habilitar:
@@ -310,12 +470,41 @@ class BarraBusqueda:
             return False
 
     def get_ruta_actual(self):
+        """
+        Retorna la ruta del archivo local actualmente cargado.
+
+        Retorna:
+            str: La ruta del archivo, o cadena vacía si no hay ninguno cargado.
+        """
         return self.ruta_actual
 
     def get_modo_busqueda(self):
+        """
+        Retorna el modo de búsqueda actual como string.
+
+        Retorna:
+            str: "Online" o "Local" según el modo seleccionado.
+        """
         return self.modo_busqueda.get()
 
     def actualizar_tema(self, bg_frame, bg_entry, fg_entry, bg_boton, fg_boton, active_bg):
+        """
+        Actualiza los colores de todos los widgets de la barra para adaptarse
+        a un tema claro u oscuro.
+
+        Parámetros:
+            bg_frame (str): Color de fondo del frame contenedor y elementos auxiliares.
+            bg_entry (str): Color de fondo del campo de texto (Entry).
+            fg_entry (str): Color del texto dentro del Entry.
+            bg_boton (str): Color de fondo de los botones.
+            fg_boton (str): Color del texto de los botones y del label de modo.
+            active_bg (str): Color de fondo de los botones al pasar el cursor encima.
+
+        Widgets actualizados:
+            top_frame, estado_frame, canvas_circulo, label_modo,
+            entry.TEntry (fieldbackground, foreground),
+            button.TButton (background, foreground, active states).
+        """
         self.top_frame.config(bg=bg_frame)
         self.estado_frame.config(bg=bg_frame)
         self.canvas_circulo.config(bg=bg_frame)
