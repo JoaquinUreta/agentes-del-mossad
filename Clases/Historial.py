@@ -1,75 +1,22 @@
-import http.client
+class Historial:
+    #================== Funcion para iniciar ==============
+    def __init__(self,limitante=10):
+        self.historial=[]
+        self.limite=limitante
+    
+    #=============== Funcion Agregar_historial ======================
+    
+    def agregar_historial(self,url):
+        if self.historial and self.historial[-1]==url:#Comprueba que el historial no este vacio
+            return #Retorna si los url estan duplicados consecutivamente
+        self.historial.append(url)
+        if len(self.historial)>self.limite:#Limita el historial a 10 elementos
+             self.historial.pop(0)#Elimina el url mas antiguo
 
+    #========================= Funcion obtener_url ===================
+    def obtener_url(self, indice):
+        historial_invertido= list(reversed(self.historial))
+        if (indice<0 or indice >= len(historial_invertido)):#Ordena del mas reciente a mas antiguo
+            return None
 
-class ClienteHTTP:
-    """
-    Cliente HTTP/HTTPS simple que realiza peticiones GET a una URL dada.
-    Soporta tanto conexiones seguras (HTTPS) como no seguras (HTTP),
-    y maneja errores de conexión y tiempo de espera.
-    """
-
-    def buscarurl(self, url, timeout=10):
-        """
-        Realiza una petición HTTP GET a la URL especificada y retorna
-        el contenido HTML de la respuesta junto con el código de estado.
-
-        Parámetros:
-            url (str): URL completa a consultar (con o sin esquema http/https).
-            timeout (int): Segundos máximos de espera antes de abortar la conexión.
-                           Por defecto es 10 segundos.
-
-        Proceso:
-            1. Detecta si la URL usa HTTPS o HTTP y elimina el prefijo del esquema.
-            2. Separa el host del path (ruta). Si no hay '/', el path se asume '/'.
-            3. Abre una conexión HTTPSConnection (puerto 443) o HTTPConnection (puerto 80)
-               según el protocolo detectado.
-            4. Envía la petición GET al path indicado.
-            5. Lee la respuesta: código de estado y cuerpo HTML decodificado en UTF-8.
-            6. Cierra la conexión y retorna el HTML junto al código de estado.
-
-        Retorna:
-            tuple(str, int | None):
-                - str: El HTML recibido como string. En caso de error, retorna
-                       un HTML de error descriptivo.
-                - int | None: Código de estado HTTP (ej. 200, 404) o None si
-                              no se pudo establecer conexión (error o timeout).
-
-        Manejo de errores:
-            - TimeoutError: Retorna un HTML indicando tiempo agotado y None como status.
-            - Cualquier otra excepción: Retorna un HTML con el mensaje de error y None.
-        """
-        # Detectar protocolo y limpiar la URL
-        if url.startswith("https://"):
-            usar_https = True
-            url = url[len("https://"):]
-        elif url.startswith("http://"):
-            usar_https = False
-            url = url[len("http://"):]
-        else:
-            usar_https = True  # Por defecto HTTPS si no especifica
-
-        # Separar host y path
-        if "/" in url:
-            host, path = url.split("/", 1)
-            path = "/" + path
-        else:
-            host = url
-            path = "/"
-
-        try:
-            if usar_https:
-                conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
-            else:
-                conn = http.client.HTTPConnection(host, 80, timeout=timeout)
-
-            conn.request("GET", path)
-            response = conn.getresponse()
-            status = response.status
-            html = response.read().decode("utf-8", errors="replace")
-            conn.close()
-            return html, status
-
-        except TimeoutError:
-            return "<h1>Tiempo de espera agotado</h1>", None
-        except Exception as e:
-            return f"<h1>Error al conectar</h1><p>{e}</p>", None
+        return historial_invertido[indice]
