@@ -17,7 +17,8 @@ class Pestaña:
         - Fila 3: Barra de progreso (progress de BarraBusqueda).
     """
 
-    def __init__(self, notebook, style, buttons_frame_global, menu_savedurl, menu_historial_global):
+    def __init__(self, notebook, style, buttons_frame_global, menu_savedurl,
+                 menu_historial_global, on_modo_cambio=None):
         """
         Crea todos los widgets de la pestaña, instancia su BarraBusqueda e Historial,
         y registra los botones de acción en la barra global de botones.
@@ -42,6 +43,7 @@ class Pestaña:
         self.notebook              = notebook
         self.style                 = style
         self.historial             = Historial()
+        self._on_modo_cambio       = on_modo_cambio
 
         # ── Frame raíz de la pestaña (va dentro del Notebook) ────────
         self.frame = tk.Frame(notebook, bg="#EDECEC")
@@ -94,6 +96,7 @@ class Pestaña:
             botones_requieren_texto=[self.fav_btn],
             botones_solo_local=[self.boton_editar, self.boton_guardar, self.boton_guardar_como],
             guardar_historial=self._guardar_menuhistorial,
+            on_modo_cambio=self._on_modo_cambio,
         )
         self.barra.on_titulo_cambio = self._actualizar_titulo_tab
 
@@ -410,6 +413,7 @@ class GestorPestañas:
             buttons_frame_global=self.buttons_frame,
             menu_savedurl=self.menu_savedurl,
             menu_historial_global=self._menu_historial_ref,
+            on_modo_cambio=self._sincronizar_modo_todas,
         )
         p.actualizar_tema(self._tema_oscuro)
         self.pestañas.append(p)
@@ -478,6 +482,12 @@ class GestorPestañas:
             return next((p for p in self.pestañas if str(p.frame) == frame_id), None)
         except Exception:
             return None
+
+    def _sincronizar_modo_todas(self, modo: str):
+        "Sincroniza el modo de búsqueda en todas las pestañas abiertas."
+        for p in self.pestañas:
+            if p is not None and p.barra is not None:
+                p.barra.aplicar_modo(modo, emitir_evento=False)
 
     def _on_tab_changed(self, event=None):
         """

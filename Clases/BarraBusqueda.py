@@ -18,7 +18,8 @@ class BarraBusqueda:
 
     def __init__(self, parent, style, area_contenido, botones_habilitar=None,
                  boton_editar=None, botones_requieren_texto=None,
-                 botones_solo_local=None, guardar_historial=None):
+                 botones_solo_local=None, guardar_historial=None,
+                 on_modo_cambio=None):
         """
         Inicializa todos los widgets de la barra de búsqueda y los coloca
         en el frame padre.
@@ -32,6 +33,7 @@ class BarraBusqueda:
         self.botones_solo_local = botones_solo_local or []
         self.ruta_actual = ""
         self.guardar_historial = guardar_historial
+        self.on_modo_cambio = on_modo_cambio
 
         # Callback para actualizar el título de la pestaña.
         self.on_titulo_cambio = None
@@ -140,8 +142,8 @@ class BarraBusqueda:
         self.entrada_var.trace_add("write", self._verificar_barra)
         self.frame_buscador.bind("<Return>", self._enter_busqueda)
 
-    def _cambiar_modo(self, modo: str):
-        """Maneja el cambio visual y lógico entre Online y Local."""
+    def aplicar_modo(self, modo: str, emitir_evento: bool = True):
+        """Actualiza el estado visual y lógico del modo de búsqueda."""
         self.modo_busqueda.set(modo)
         if modo == "Online":
             self.canvas_circulo.itemconfig(self.circulo, fill="#5CB85C")
@@ -157,6 +159,13 @@ class BarraBusqueda:
             self.Status = False
             for _boton in self.botones_solo_local:
                 _boton.config(state="normal" if self.ruta_actual else "disabled")
+
+        if emitir_evento and self.on_modo_cambio is not None:
+            self.on_modo_cambio(modo)
+
+    def _cambiar_modo(self, modo: str):
+        "Maneja el cambio visual y lógico entre Online y Local"
+        self.aplicar_modo(modo, emitir_evento=True)
 
     def _verificar_barra(self, *args):
         texto = self.entrada_var.get().strip()
