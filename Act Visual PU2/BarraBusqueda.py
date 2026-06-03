@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
@@ -5,8 +6,23 @@ from ClienteHTTP import ClienteHTTP
 
 
 class BarraBusqueda:
-    def __init__(self, parent, style, area_contenido, botones_habilitar=None, boton_editar=None, botones_requieren_texto=None, botones_solo_local=None):
+    """
+    Componente de interfaz que representa la barra de navegación del explorador.
+    Incluye un campo de texto para ingresar URLs o rutas, botones de acción,
+    un selector de modo (Online/Local), un indicador visual de estado de conexión,
+    una barra de progreso y una etiqueta de estado inferior.
 
+    Se comunica con RenderizadorParser para mostrar el HTML en el área de contenido
+    y con ClienteHTTP para realizar peticiones web en modo Online.
+    """
+
+    def __init__(self, parent, style, area_contenido, botones_habilitar=None,
+                 boton_editar=None, botones_requieren_texto=None,
+                 botones_solo_local=None, guardar_historial=None):
+        """
+        Inicializa todos los widgets de la barra de búsqueda y los coloca
+        en el frame padre.
+        """
         self.parent = parent
         self.style = style
         self.area_contenido = area_contenido
@@ -15,14 +31,19 @@ class BarraBusqueda:
         self.botones_requieren_texto = botones_requieren_texto or []
         self.botones_solo_local = botones_solo_local or []
         self.ruta_actual = ""
+        self.guardar_historial = guardar_historial
 
-        # ── Variables ────────────────────────────────────────────────
-        self.entrada_var    = tk.StringVar()
+        # Callback para actualizar el título de la pestaña.
+        self.on_titulo_cambio = None
+
+        # ── Variables de Estado ──────────────────────────────────────
+        self.entrada_var = tk.StringVar()
         self.barra_progreso = tk.StringVar()
-        self.modo_busqueda  = tk.StringVar(value="Local")
-        self.Status = False
+        self.modo_busqueda = tk.StringVar(value="Online")
+        self.Status = True  # True = Online, False = Local
+        self.url_correcta = 0
 
-        # ── Top frame ────────────────────────────────────────────────
+        # ── Frame Superior Contenedor ─────────────────────────────────
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
         self.top_frame.columnconfigure(0, weight=0)
         self.top_frame.columnconfigure(1, weight=0)
@@ -47,10 +68,10 @@ class BarraBusqueda:
         )
         self.button_izq.grid(row=0, column=0, padx=(0, 5))
 
-        # ── Botón Modo de Búsqueda ───────────────────────────────────
+        # ── Botón Modo de Búsqueda (Menú Desplegable) ──────────────────
         self.button_mode = ttk.Menubutton(
             self.top_frame,
-            text="Local",
+            text="Online",
             style="Custom.TMenubutton"
         )
         menumode = tk.Menu(self.button_mode, tearoff=0)
@@ -59,7 +80,7 @@ class BarraBusqueda:
         menumode.add_command(label="Búsqueda Local",  command=lambda: self._cambiar_modo("Local"))
         menumode.add_command(label="Búsqueda Online", command=lambda: self._cambiar_modo("Online"))
 
-        # ── Entry de búsqueda ────────────────────────────────────────
+        # ── Campo de Entrada (Buscador) ────────────────────────────────
         self.frame_buscador = ttk.Entry(
             self.top_frame,
             style="entry.TEntry",
@@ -78,7 +99,7 @@ class BarraBusqueda:
         )
         self.button_ir.grid(row=0, column=3)
 
-        # ── Indicador Online / Offline ────────────────────────────────
+        # ── Indicador Visual Online / Local ───────────────────────────
         self.estado_frame = tk.Frame(self.top_frame, bg="#E4E2E2")
         self.estado_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 0))
 
@@ -89,18 +110,18 @@ class BarraBusqueda:
             highlightthickness=0
         )
         self.canvas_circulo.pack(side="left", padx=(0, 4))
-        self.circulo = self.canvas_circulo.create_oval(1, 1, 11, 11, fill="#D9534F", outline="")
+        self.circulo = self.canvas_circulo.create_oval(1, 1, 11, 11, fill="#5CB85C", outline="")
 
         self.label_modo = tk.Label(
             self.estado_frame,
-            text="Offline",
+            text="Online",
             bg="#E4E2E2",
             fg="#555555",
             font=("Segoe UI", 8)
         )
         self.label_modo.pack(side="left")
 
-        # ── Barra de estado ──────────────────────────────────────────
+        # ── Elementos Inferiores (Barra de Estado y Progreso) ──────────
         self.estado_label = tk.Label(
             parent,
             textvariable=self.barra_progreso,
@@ -108,8 +129,6 @@ class BarraBusqueda:
             relief=SUNKEN,
             anchor="w"
         )
-
-        # ── Barra de carga ───────────────────────────────────────────
         self.progress = ttk.Progressbar(
             parent,
             orient="horizontal",
@@ -117,56 +136,138 @@ class BarraBusqueda:
             mode="indeterminate"
         )
 
-        # ── Trace ────────────────────────────────────────────────────
+        # ── Traces y Binds ───────────────────────────────────────────
         self.entrada_var.trace_add("write", self._verificar_barra)
+        self.frame_buscador.bind("<Return>", self._enter_busqueda)
 
-    # ── Cambio de modo ────────────────────────────────────────────────
     def _cambiar_modo(self, modo: str):
+        """Maneja el cambio visual y lógico entre Online y Local."""
         self.modo_busqueda.set(modo)
         if modo == "Online":
             self.canvas_circulo.itemconfig(self.circulo, fill="#5CB85C")
             self.label_modo.config(text="Online")
             self.button_mode.configure(text="Online")
             self.Status = True
-            # Deshabilitar botones de edición local
-            for boton in self.botones_solo_local:
-                boton.config(state="disabled")
+            for _boton in self.botones_solo_local:
+                _boton.config(state="disabled")
         else:
             self.canvas_circulo.itemconfig(self.circulo, fill="#D9534F")
             self.label_modo.config(text="Local")
             self.button_mode.configure(text="Local")
             self.Status = False
-            # Rehabilitar botones solo si hay un archivo abierto
-            for boton in self.botones_solo_local:
-                boton.config(state="normal" if self.ruta_actual else "disabled")
+            for _boton in self.botones_solo_local:
+                _boton.config(state="normal" if self.ruta_actual else "disabled")
 
     def _verificar_barra(self, *args):
         texto = self.entrada_var.get().strip()
         estado = "normal" if texto else "disabled"
         self.button_ir.config(state=estado)
-        for boton in self.botones_requieren_texto:
-            boton.config(state=estado)
+        for _boton in self.botones_requieren_texto:
+            _boton.config(state=estado)
+
+    def _enter_busqueda(self, event=None):
+        if self.entrada_var.get().strip():
+            self.iniciar_busqueda()
+
+    def navegar_desde_hipervinculo(self, url):
+        """
+        Callback invocado por el RenderizadorParser al hacer click en un enlace.
+        Resuelve automáticamente si es local o remoto, ajusta el modo y navega.
+        """
+        if url.startswith(("http://", "https://", "www.")):
+            self._cambiar_modo("Online")
+            self.entrada_var.set(url)
+        else:
+            if self.Status:  # Si estábamos navegando en la web, es un enlace web relativo
+                url_actual = self.entrada_var.get().strip()
+                from urllib.parse import urljoin
+                nueva_url = urljoin(url_actual, url)
+                self._cambiar_modo("Online")
+                self.entrada_var.set(nueva_url)
+            else:  # Si estábamos en modo Local, es un archivo local relativo
+                if self.ruta_actual:
+                    carpeta_actual = os.path.dirname(self.ruta_actual)
+                    ruta_completa = os.path.normpath(os.path.join(carpeta_actual, url))
+                else:
+                    ruta_completa = os.path.abspath(url)
+                self._cambiar_modo("Local")
+                self.entrada_var.set(ruta_completa)
+
+        self.iniciar_busqueda()
 
     def iniciar_busqueda(self):
-        self.barra_progreso.set("Buscando...")
-        self.progress.start(10)
-        self.parent.after(3000, self._ejecutar_proceso)
+        formato_correcto, extencion_correcta = self.URL_absoluta()
+        if self.Status:
+            if formato_correcto and extencion_correcta:
+                self.barra_progreso.set("Buscando...")
+                self.progress.start(10)
+                self.parent.after(3000, self._ejecutar_proceso)
+                return
+            if not formato_correcto:
+                messagebox.showerror("error de entrada", "La URL debe comenzar con http:// o https://")
+                return
+            if not extencion_correcta:
+                messagebox.showerror("error de entrada", "La URL no tiene una extensión válida")
+                return
+        else:
+            self.barra_progreso.set("Buscando...")
+            self.progress.start(10)
+            self.parent.after(3000, self._ejecutar_proceso)
+
+    def URL_absoluta(self):
+        entrada = self.entrada_var.get().strip()
+        if not entrada:
+            return False, False
+
+        if not self.Status:
+            return True, True
+
+        if not entrada.lower().startswith(("http://", "https://")):
+            entrada = "https://" + entrada
+            self.entrada_var.set(entrada)
+        if "://" not in entrada:
+            return False, False
+        esquema, resto = entrada.split("://", 1)
+        esquema = esquema.lower()
+        if esquema not in ("http", "https"):
+            return False, False
+        host_port, _, _ = resto.partition("/")
+        if not host_port:
+            return False, False
+        host, sep, port = host_port.partition(":")
+        host = host.lower()
+        if not host:
+            return False, False
+        if sep:
+            if not port.isdigit() or not (1 <= int(port) <= 65535):
+                return False, False
+        if host == "localhost":
+            return True, True
+        if "." not in host:
+            return False, False
+        extencion = host.split(".")[-1].lower()
+        if extencion in ["com", "org", "net", "io", "gov", "cl"]:
+            return True, True
+        return True, False
 
     def _ejecutar_proceso(self):
         self.progress.stop()
         self.barra_progreso.set("Procesando datos...")
-        resultado = self.verificar_existencia()  # recibe el estado
-        # Solo sobreescribe la barra si NO estamos en modo Online
-        # (en Online, verificar_existencia ya puso 200 OK / 404 / error)
+        resultado = self.verificar_existencia()
         if not self.Status:
             self.barra_progreso.set("Listo" if resultado else "Error")
 
-    def verificar_existencia(self):
-        import os
-        texto = self.entrada_var.get().strip()
-        parser = RenderizadorParser(self.area_contenido)
+    def _notificar_titulo(self, texto):
+        if self.on_titulo_cambio:
+            titulo = texto[:30] + ("…" if len(texto) > 30 else "")
+            self.on_titulo_cambio(titulo)
 
-        # ── Modo Online ───────────────────────────────────────────────
+    def verificar_existencia(self):
+        texto = self.entrada_var.get().strip()
+        # Se inyecta 'self.navegar_desde_hipervinculo' para conectar el click con este componente
+        parser = RenderizadorParser(self.area_contenido, callback_navegacion=self.navegar_desde_hipervinculo)
+
+        # ── Flujo Modo Online ─────────────────────────────────────────
         if self.Status:
             if not texto:
                 messagebox.showerror("Error", "El campo está vacío")
@@ -180,34 +281,33 @@ class BarraBusqueda:
 
                 if status == 200:
                     self.barra_progreso.set(f"200 OK — {texto}")
-                    parser.renderizar_desde_string(html_string, ruta_base="")
-                    for boton in self.botones_habilitar:
-                        boton.config(state="normal")
+                    parser.renderizar_desde_string(html_string, ruta_base=texto)
+                    self._notificar_titulo(texto)
+                    if self.guardar_historial:
+                        self.guardar_historial()
+                    for _boton in self.botones_habilitar:
+                        _boton.config(state="normal")
                     if self.boton_editar:
-                        self.boton_editar.config(state="normal")
+                        self.boton_editar.config(state="disabled")
                     return True
-
                 elif status == 404:
                     self.barra_progreso.set(f"404 Not Found — {texto}")
                     messagebox.showerror("Error", f"Página no encontrada: {texto}")
                     return False
-
                 elif status is None:
                     self.barra_progreso.set("Error — No se pudo conectar")
                     messagebox.showerror("Error", "No se pudo establecer conexión")
                     return False
-
                 else:
                     self.barra_progreso.set(f"{status} — {texto}")
                     messagebox.showwarning("Aviso", f"El servidor respondió con código {status}")
                     return False
-
             except Exception as e:
                 self.barra_progreso.set("Error inesperado")
                 messagebox.showerror("Error", f"Ocurrió un error al conectar:\n{e}")
                 return False
 
-        # ── Modo Local ────────────────────────────────────────────────
+        # ── Flujo Modo Local ──────────────────────────────────────────
         if not os.path.isfile(texto):
             messagebox.showerror("Error", "El archivo no existe")
             return False
@@ -223,14 +323,14 @@ class BarraBusqueda:
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
-
-            for boton in self.botones_habilitar:
-                boton.config(state="normal")
+            self._notificar_titulo(os.path.basename(texto))
+            if self.guardar_historial:
+                self.guardar_historial()
+            for _boton in self.botones_habilitar:
+                _boton.config(state="normal")
             if self.boton_editar:
-                es_html = texto.lower().endswith(".html")
-                self.boton_editar.config(state="disabled" if es_html else "normal")
+                self.boton_editar.config(state="normal")
             return True
-
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error:\n{e}")
             return False
@@ -246,12 +346,6 @@ class BarraBusqueda:
         self.estado_frame.config(bg=bg_frame)
         self.canvas_circulo.config(bg=bg_frame)
         self.label_modo.config(bg=bg_frame, fg=fg_boton)
-        self.style.configure("entry.TEntry",
-                              fieldbackground=bg_entry,
-                              foreground=fg_entry)
-        self.style.configure("button.TButton",
-                              background=bg_boton,
-                              foreground=fg_boton)
-        self.style.map("button.TButton",
-                       background=[("active", active_bg)],
-                       foreground=[("active", fg_boton)])
+        self.style.configure("entry.TEntry", fieldbackground=bg_entry, foreground=fg_entry)
+        self.style.configure("button.TButton", background=bg_boton, foreground=fg_boton)
+        self.style.map("button.TButton", background=[("active", active_bg)], foreground=[("active", fg_boton)])
