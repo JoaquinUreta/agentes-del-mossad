@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from BarraBusqueda import BarraBusqueda
 from Historial import Historial
+from NavegaAvanzada import NavegaAvanzada
 
 
 class Pestaña:
@@ -43,6 +44,7 @@ class Pestaña:
         self.notebook              = notebook
         self.style                 = style
         self.historial             = Historial()
+        self.navegacion            = NavegaAvanzada()
         self._on_modo_cambio       = on_modo_cambio
 
         # ── Frame raíz de la pestaña (va dentro del Notebook) ────────
@@ -96,6 +98,7 @@ class Pestaña:
             botones_requieren_texto=[self.fav_btn],
             botones_solo_local=[self.boton_editar, self.boton_guardar, self.boton_guardar_como],
             guardar_historial=self._guardar_menuhistorial,
+            navegador=self.navegacion,
             on_modo_cambio=self._on_modo_cambio,
         )
         self.barra.on_titulo_cambio = self._actualizar_titulo_tab

@@ -19,7 +19,7 @@ class BarraBusqueda:
     def __init__(self, parent, style, area_contenido, botones_habilitar=None,
                  boton_editar=None, botones_requieren_texto=None,
                  botones_solo_local=None, guardar_historial=None,
-                 on_modo_cambio=None):
+                 on_modo_cambio=None,navegador=None):
         """
         Inicializa todos los widgets de la barra de búsqueda y los coloca
         en el frame padre.
@@ -34,6 +34,8 @@ class BarraBusqueda:
         self.ruta_actual = ""
         self.guardar_historial = guardar_historial
         self.on_modo_cambio = on_modo_cambio
+        self.navegador=navegador
+        self._navegacion_interna = False
 
         # Callback para actualizar el título de la pestaña.
         self.on_titulo_cambio = None
@@ -49,8 +51,10 @@ class BarraBusqueda:
         self.top_frame = tk.Frame(parent, bg="#E4E2E2")
         self.top_frame.columnconfigure(0, weight=0)
         self.top_frame.columnconfigure(1, weight=0)
-        self.top_frame.columnconfigure(2, weight=1)
+        self.top_frame.columnconfigure(2, weight=0)
         self.top_frame.columnconfigure(3, weight=0)
+        self.top_frame.columnconfigure(4, weight=1)
+        self.top_frame.columnconfigure(5, weight=0)
 
         # ── Estilos ──────────────────────────────────────────────────
         self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
@@ -61,6 +65,26 @@ class BarraBusqueda:
         )
         self.style.configure("entry.TEntry", fieldbackground="#FFFFFF", foreground="#000")
 
+         # ── Botón Atrás ──────────────────────────────────────────────
+        self.button_atras = ttk.Button(
+             self.top_frame,
+             text="←",
+             style="button.TButton",
+             command=self.ir_atras,
+             state="disabled"
+             )
+        self.button_atras.grid(row=0, column=0, padx=(0, 3))
+
+        # ── Botón Adelante ───────────────────────────────────────────
+        self.button_adelante = ttk.Button(
+             self.top_frame,
+             text="→",
+             style="button.TButton",
+             command=self.ir_adelante,
+             state="disabled"
+             )
+        self.button_adelante.grid(row=0, column=1, padx=(0, 3))
+
         # ── Botón Recargar ───────────────────────────────────────────
         self.button_izq = ttk.Button(
             self.top_frame,
@@ -68,7 +92,7 @@ class BarraBusqueda:
             style="button.TButton",
             command=self.iniciar_busqueda
         )
-        self.button_izq.grid(row=0, column=0, padx=(0, 5))
+        self.button_izq.grid(row=0, column=2, padx=(0, 5))
 
         # ── Botón Modo de Búsqueda (Menú Desplegable) ──────────────────
         self.button_mode = ttk.Menubutton(
@@ -77,7 +101,7 @@ class BarraBusqueda:
             style="Custom.TMenubutton"
         )
         menumode = tk.Menu(self.button_mode, tearoff=0)
-        self.button_mode.grid(row=0, column=1, padx=(0, 5))
+        self.button_mode.grid(row=0, column=3, padx=(0, 5))
         self.button_mode["menu"] = menumode
         menumode.add_command(label="Búsqueda Local",  command=lambda: self._cambiar_modo("Local"))
         menumode.add_command(label="Búsqueda Online", command=lambda: self._cambiar_modo("Online"))
@@ -89,7 +113,7 @@ class BarraBusqueda:
             textvariable=self.entrada_var,
             width=60
         )
-        self.frame_buscador.grid(row=0, column=2, sticky="ew", padx=(0, 5))
+        self.frame_buscador.grid(row=0, column=4, sticky="ew", padx=(0, 5))
 
         # ── Botón Ir ─────────────────────────────────────────────────
         self.button_ir = ttk.Button(
@@ -99,7 +123,7 @@ class BarraBusqueda:
             state="disabled",
             command=self.iniciar_busqueda
         )
-        self.button_ir.grid(row=0, column=3)
+        self.button_ir.grid(row=0, column=5)
 
         # ── Indicador Visual Online / Local ───────────────────────────
         self.estado_frame = tk.Frame(self.top_frame, bg="#E4E2E2")
@@ -265,6 +289,7 @@ class BarraBusqueda:
         resultado = self.verificar_existencia()
         if not self.Status:
             self.barra_progreso.set("Listo" if resultado else "Error")
+        self._actualizar_botones_navegacion()
 
     def _notificar_titulo(self, texto):
         if self.on_titulo_cambio:
@@ -291,6 +316,9 @@ class BarraBusqueda:
                 if status == 200:
                     self.barra_progreso.set(f"200 OK — {texto}")
                     parser.renderizar_desde_string(html_string, ruta_base=texto)
+                    if self.navegador and not self._navegacion_interna:#Guarda en NavegaAvanzada la url actual
+                        self.navegador.navegar(texto)
+                        self._actualizar_botones_navegacion()
                     self._notificar_titulo(texto)
                     if self.guardar_historial:
                         self.guardar_historial()
@@ -332,6 +360,9 @@ class BarraBusqueda:
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
+            if self.navegador and not self._navegacion_interna:
+                self.navegador.navegar(texto)
+                self._actualizar_botones_navegacion()
             self._notificar_titulo(os.path.basename(texto))
             if self.guardar_historial:
                 self.guardar_historial()
@@ -349,6 +380,46 @@ class BarraBusqueda:
 
     def get_modo_busqueda(self):
         return self.modo_busqueda.get()
+    
+    def ir_atras(self):
+        if not self.navegador:
+            return
+        url = self.navegador.atras()
+        if url:#Si se encuentra una url del arreglo navegador,el boton puede hacer la anterior busqueda
+            self._navegacion_interna = True
+            try:
+                self.entrada_var.set(url)
+                self._actualizar_botones_navegacion()
+                self.iniciar_busqueda()
+            finally:
+                self._navegacion_interna = False
+            self._actualizar_botones_navegacion()
+        
+    def ir_adelante(self):
+        if not self.navegador:
+            return
+        url = self.navegador.adelante()
+        if url:#Si se encuentra una url del arreglo navegador,el boton puede hacer la busqueda siguiente            self._navegacion_interna = True
+            try:
+                self.entrada_var.set(url)
+                self._actualizar_botones_navegacion()
+                self.iniciar_busqueda()
+            finally:
+                self._navegacion_interna = False
+        self._actualizar_botones_navegacion()
+        
+    def _actualizar_botones_navegacion(self):
+        if not self.navegador:
+            return
+        if self.navegador.puede_atras():
+            self.button_atras.config(state="normal")
+        else:#Desahabilita boton atras si no hay elementos
+            self.button_atras.config(state="disabled")
+        if self.navegador.puede_adelante():
+            self.button_adelante.config(state="normal")
+        else:#Desahabilita boton adelante si no hay elementos
+            self.button_adelante.config(state="disabled")
+    
 
     def actualizar_tema(self, bg_frame, bg_entry, fg_entry, bg_boton, fg_boton, active_bg):
         self.top_frame.config(bg=bg_frame)
