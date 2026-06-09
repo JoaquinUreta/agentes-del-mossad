@@ -12,6 +12,7 @@ from Pestaña import Pestaña, GestorPestañas
 
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
 FAVS_FILE     = os.path.join(BASE_DIR, "favoritos.json")
+HISTORIAL_FILE    = os.path.join(BASE_DIR, "historial.json")
 MAX_FAVORITOS = 10
 
 # ─────────────────────────────────────────────
@@ -56,9 +57,14 @@ class Ventana:
 
         # ── Estado de favoritos (persistente en JSON) ─────────────────
         self.favoritos: list[str] = self._cargar_favoritos()
-
-        # ── Historial global (agrega entradas de todas las pestañas) ──
+        
+        # ── Historial global (Inicializado con los datos persistidos) ──
         self.historial_global = Historial(limitante=10)
+        historial_cargado = self._cargar_historial()
+        
+        # Poblamos el objeto Historial respetando el orden correcto
+        for url in reversed(historial_cargado):
+            self.historial_global.agregar_historial(url)
 
         # ── Visibilidad del panel lateral ─────────────────────────────
         self._panel_visible = False
@@ -70,6 +76,9 @@ class Ventana:
         self._build_statusbar()
         self._apply_theme()
         self._bind_events()
+
+        # Volcar el historial inicial en el Listbox visual
+        self._refrescar_listbox_historial()
 
         self.root.protocol("WM_DELETE_WINDOW", self._cerrado)
         self.root.mainloop()
@@ -516,7 +525,7 @@ class Ventana:
             except Exception:
                 pass
         return []
-
+    
     def _guardar_favoritos(self):
         """Escribe self.favoritos en favoritos.json."""
         try:
@@ -571,7 +580,28 @@ class Ventana:
             return
         url = self.favoritos[sel[0]]
         self._navegar_url(url)
+    
+    #----- Persistencia sobre historial ---------------------------------
+    def _guardar_historial(self):
+        try:
+            with open(HISTORIAL_FILE, "w", encoding="utf-8") as f:
+                # Guardamos el array interno de URLs gestionado por Historial
+                json.dump(self.historial_global.historial, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
+    def _cargar_historial(self) -> list:
+        "Lee historial.json; si no existe devuelve lista vacía."
+        if os.path.isfile(HISTORIAL_FILE):
+            try:
+                with open(HISTORIAL_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    return [str(u) for u in data[:MAX_FAVORITOS]]
+            except Exception:
+                pass
+        return []
+        
     # ── Operaciones sobre historial ──────────────────────────────────
 
     def registrar_en_historial(self, url: str):
@@ -584,6 +614,7 @@ class Ventana:
             return
         self.historial_global.agregar_historial(url)
         self._refrescar_listbox_historial()
+        self._guardar_historial()
 
     def _refrescar_listbox_historial(self):
         """Vuelca el historial global en el Listbox (más reciente arriba)."""
@@ -599,6 +630,7 @@ class Ventana:
         if messagebox.askyesno("Confirmar", "¿Limpiar todo el historial?"):
             self.historial_global.historial.clear()
             self.lb_historial.delete(0, "end")
+            self._guardar_historial()
 
     def _navegar_desde_historial(self):
         """Carga la URL del historial seleccionada en la pestaña activa."""
