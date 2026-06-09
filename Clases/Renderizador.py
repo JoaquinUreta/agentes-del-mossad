@@ -65,6 +65,10 @@ class RenderizadorParser(HTMLParser):
             if elemento[0] == "texto":
                 self.area_contenido.insert("end", elemento[1] + "\n")
 
+            elif elemento[0]=="error":
+                self.area_contenido.tag_config("letra_roja",foreground="red")
+                self.area_contenido.insert("end",elemento[1]+"\n","letra_roja")
+
             elif elemento[0] == "imagen":
                 src = elemento[1]
                 alt = elemento[2] if len(elemento) > 2 else ""
@@ -78,12 +82,12 @@ class RenderizadorParser(HTMLParser):
                 self.area_contenido.insert("insert", texto_link + "\n")
                 fin = self.area_contenido.index("insert")
 
-                tag = f"link_{inicio.replace('.', '_')}"
+                tag = f"link_{inicio.replace('.', '_')}"  #Crea Tag o nombre unico en la posicion para no perder el link y que sea unico
 
                 self.area_contenido.tag_add(tag, inicio, fin)
                 self.area_contenido.tag_config(tag, foreground="blue", underline=True)
 
-                # ── Lo que arregla el problema del raton ──
+                # ── Lo que arregla el problema del raton, el tag funciona como una screenshot del momento cuando guardamos el enlace ──
                 def al_entrar(event, t=tag): #Lo que al poner el raton encima vuelva rojo el hipervinculo
                     self.area_contenido.tag_config(t, foreground="red")
                     self.area_contenido.config(cursor="hand2")
@@ -152,6 +156,16 @@ class RenderizadorParser(HTMLParser):
             self.renderizar(ruta_completa)
 
     def handle_starttag(self, tag, attrs):
+
+        etiquetas_soportadas={"html","head","body","meta","link","!doctype",
+            "script","style","title","h1","h2","h3","h4","h5","h6",
+            "p","div","section","article","header","footer","nav",
+            "ul","ol","li","br","img","a"
+            }
+        
+        if tag.lower()not in etiquetas_soportadas:
+            self.salida.append(("error",f"Este elemento <{tag}> no se puede renderizar"))
+            
         if tag == "script":
             self.en_script = True
         elif tag == "style":

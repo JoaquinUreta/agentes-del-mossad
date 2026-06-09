@@ -204,20 +204,20 @@ class BarraBusqueda:
 
     def navegar_desde_hipervinculo(self, url):
         """
-        Callback invocado por el RenderizadorParser al hacer click en un enlace.
+        Callback llamado por el RenderizadorParser al hacer click en un enlace.
         Resuelve automáticamente si es local o remoto, ajusta el modo y navega.
         """
         if url.startswith(("http://", "https://", "www.")):
             self._cambiar_modo("Online")
             self.entrada_var.set(url)
         else:
-            if self.Status:  # Si estábamos navegando en la web, es un enlace web relativo
+            if self.Status:  
                 url_actual = self.entrada_var.get().strip()
                 from urllib.parse import urljoin
                 nueva_url = urljoin(url_actual, url)
                 self._cambiar_modo("Online")
                 self.entrada_var.set(nueva_url)
-            else:  # Si estábamos en modo Local, es un archivo local relativo
+            else:  
                 if self.ruta_actual:
                     carpeta_actual = os.path.dirname(self.ruta_actual)
                     ruta_completa = os.path.normpath(os.path.join(carpeta_actual, url))
