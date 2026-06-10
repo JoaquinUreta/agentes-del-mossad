@@ -25,9 +25,20 @@ class RenderizadorParser(HTMLParser):
         self.en_h1 = False
         self.en_h2 = False
         self.en_h3 = False
+        self.en_h4 = False
+        self.en_h5 = False
+        self.en_h6 = False
+        self.en_doctype = False
+        self.en_html = False
+        self.en_head = False
+        self.en_Strong = False
+        self.en_em = False
         self.en_a = False
         self.en_li = False
         self.en_title = False
+        self.en_body = False
+        self.en_br = False
+        self.en_hr = False
         self.titulo_pagina = ""
         self.href = ""
         self.salida = []
@@ -35,6 +46,37 @@ class RenderizadorParser(HTMLParser):
         self.en_style = False
         self.url_base = ""
         self._imagenes_tk = []
+        self.en_li = False
+        """banderas de etiquetas avanzadas"""
+        self.en_div = False
+        self.en_span = False
+        self.en_table = False
+        self.en_tr = False
+        self.en_th = False
+        self.en_td = False
+        self.en_form = False
+        self.en_input = False
+        self.en_label = False
+        self.en_button = False
+        self.en_select = False
+        self.en_textarea = False
+        self.en_header = False
+        self.en_footer = False
+        self.en_nav = False
+        self.en_section = False
+        self.en_article = False
+        self.en_aside = False
+        self.en_figure = False
+        self.en_figcaption = False
+        """banderas de etiquetas multimedia"""
+        self.en_video = False
+        self.en_audio = False
+        self.en_source = False
+        self.en_track = False
+        self.en_canvas = False
+        self.en_svg = False
+        self.en_picture = False
+        self.en_iframe = False
 
     def renderizar(self, ruta):
         self.salida = []
@@ -160,7 +202,9 @@ class RenderizadorParser(HTMLParser):
         etiquetas_soportadas={"html","head","body","meta","link","!doctype",
             "script","style","title","h1","h2","h3","h4","h5","h6",
             "p","div","section","article","header","footer","nav",
-            "ul","ol","li","br","img","a"
+            "ul","ol","li","br","img","a","span","table","tr","th","td","form","input","label",
+            "button","select","textarea","nav","section","article","aside","figure","figcaption",
+            "video","audio","source","track","canvas","svg","picture","iframe", "i"
             }
         
         if tag.lower()not in etiquetas_soportadas:
@@ -170,7 +214,6 @@ class RenderizadorParser(HTMLParser):
             self.en_script = True
         elif tag == "style":
             self.en_style = True
-
         if tag == "title":
             self.en_title = True
         elif tag == "h1":
@@ -202,7 +245,56 @@ class RenderizadorParser(HTMLParser):
             for attr in attrs:
                 if attr[0] == "href":
                     self.href = attr[1]
-
+        elif tag == "span":
+            self.en_span = True
+        elif tag == "table":
+            self.en_table = True
+        elif tag == "tr":
+            self.en_tr = True
+        elif tag == "th":
+            self.en_th = True
+        elif tag == "td":
+            self.en_td = True
+        elif tag == "form":
+            self.en_form = True
+        elif tag == "input":
+            self.en_input = True
+        elif tag == "label":
+            self.en_label = True
+        elif tag == "button":
+            self.en_button = True
+        elif tag == "select":
+            self.en_select = True
+        elif tag == "textarea":
+            self.en_textarea = True
+        elif tag == "nav":
+            self.en_nav = True
+        elif tag == "section":
+            self.en_section = True
+        elif tag == "article":
+            self.en_article = True
+        elif tag == "aside":
+            self.en_aside = True
+        elif tag == "figure":
+            self.en_figure = True
+        elif tag == "figcaption":
+            self.en_figcaption = True
+        elif tag == "video":
+            self.en_video = True
+        elif tag == "audio":
+            self.en_audio = True
+        elif tag == "source":
+            self.en_source = True
+        elif tag == "track":
+            self.en_track = True
+        elif tag == "canvas":
+            self.en_canvas = True
+        elif tag == "svg":
+            self.en_svg = True
+        elif tag == "picture":
+            self.en_picture = True
+        elif tag == "iframe":
+            self.en_iframe = True
     def handle_endtag(self, tag):
         if tag == "script":
             self.en_script = False
@@ -222,6 +314,62 @@ class RenderizadorParser(HTMLParser):
         elif tag == "a":
             self.en_a = False
             self.href = ""
+        elif tag == "div":
+            self.en_div = False
+        elif tag == "span":
+            self.en_span = False
+        elif tag == "table":
+            self.en_table = False
+        elif tag == "tr":
+            self.en_tr = False
+        elif tag == "th":
+            self.en_th = False
+        elif tag == "td":
+            self.en_td = False
+        elif tag == "form":
+            self.en_form = False
+        elif tag == "input":
+            self.en_input = False
+        elif tag == "label":
+            self.en_label = False
+        elif tag == "button":
+            self.en_button = False
+        elif tag == "select":
+            self.en_select = False
+        elif tag == "textarea":
+            self.en_textarea = False
+        elif tag == "header":
+            self.en_header = False
+        elif tag == "footer":
+            self.en_footer = False
+        elif tag == "nav":
+            self.en_nav = False
+        elif tag == "section":
+            self.en_section = False
+        elif tag == "article":
+            self.en_article = False
+        elif tag == "aside":
+            self.en_aside = False
+        elif tag == "figure":
+            self.en_figure = False
+        elif tag == "figcaption":
+            self.en_figcaption = False
+        elif tag == "video":
+            self.en_video = False
+        elif tag == "audio":
+            self.en_audio = False
+        elif tag == "source":
+            self.en_source = False
+        elif tag == "track":
+            self.en_track = False
+        elif tag == "canvas":
+            self.en_canvas = False
+        elif tag == "svg":
+            self.en_svg = False
+        elif tag == "picture":
+            self.en_picture = False
+        elif tag == "iframe":
+            self.en_iframe = False
 
     def handle_data(self, data):
         if self.en_script or self.en_style:

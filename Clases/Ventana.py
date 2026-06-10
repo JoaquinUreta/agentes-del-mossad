@@ -28,9 +28,9 @@ class VentanaPrincipal:
         7. _construir_botones_pestañas → botones Nueva/Cerrar pestaña.
         8. _construir_ajustes       → menú Ajustes con modos claro/oscuro.
         9. _cargar_urls_default     → agrega URLs predefinidas al menú de favoritos.
-       10. _abrir_primera_pestaña   → crea la pestaña inicial.
-       11. _configurar_cierre       → protocolo WM_DELETE_WINDOW.
-       12. mainloop()               → inicia el bucle de eventos de tkinter.
+        10. _abrir_primera_pestaña   → crea la pestaña inicial.
+        11. _configurar_cierre       → protocolo WM_DELETE_WINDOW.
+        12. mainloop()               → inicia el bucle de eventos de tkinter.
     """
 
     def __init__(self):
