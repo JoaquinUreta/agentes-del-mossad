@@ -77,6 +77,7 @@ class RenderizadorParser(HTMLParser):
         self.en_svg = False
         self.en_picture = False
         self.en_iframe = False
+        self.indent_level = 0
 
     def renderizar(self, ruta):
         self.salida = []
@@ -204,9 +205,10 @@ class RenderizadorParser(HTMLParser):
             "p","div","section","article","header","footer","nav",
             "ul","ol","li","br","img","a","span","table","tr","th","td","form","input","label",
             "button","select","textarea","nav","section","article","aside","figure","figcaption",
-            "video","audio","source","track","canvas","svg","picture","iframe", "i"
+            "video","audio","source","track","canvas","svg","picture","iframe"
             }
-        
+        attr_dict = dict(attrs)
+        self.attrs_actuales = attr_dict
         if tag.lower()not in etiquetas_soportadas:
             self.salida.append(("error",f"Este elemento <{tag}> no se puede renderizar"))
             
@@ -219,10 +221,29 @@ class RenderizadorParser(HTMLParser):
         elif tag == "h1":
             self.en_h1 = True
             self.salida.append(("texto", ""))
-        elif tag in ("h2", "h3", "h4", "h5", "h6"):
+        elif tag == "h2":
             self.en_h2 = True
             self.salida.append(("texto", ""))
-        elif tag in ("p", "div", "section", "article", "header", "footer", "nav"):
+        elif tag == "h3":
+            self.en_h3 = True
+            self.salida.append(("texto", ""))
+        elif tag == "h4":
+            self.en_h4 = True
+            self.salida.append(("texto", ""))
+        elif tag == "h5":
+            self.en_h5 = True
+            self.salida.append(("texto", ""))
+        elif tag == "h6":
+            self.en_h6 = True
+            self.salida.append(("texto", ""))
+        elif tag == "div":
+            self.en_div = True
+            self.salida.append(("texto", ""))
+            self.indent_level += 1
+        elif tag in ("section", "article", "header", "footer", "nav", "aside"):
+            self.salida.append(("texto", ""))
+            self.indent_level += 1
+        elif tag == "p":
             self.salida.append(("texto", ""))
         elif tag in ("ul", "ol"):
             self.salida.append(("texto", ""))
@@ -259,10 +280,10 @@ class RenderizadorParser(HTMLParser):
             self.en_form = True
         elif tag == "input":
             self.en_input = True
+        elif self.en_button:
+            self.en_button = True
         elif tag == "label":
             self.en_label = True
-        elif tag == "button":
-            self.en_button = True
         elif tag == "select":
             self.en_select = True
         elif tag == "textarea":
@@ -295,6 +316,7 @@ class RenderizadorParser(HTMLParser):
             self.en_picture = True
         elif tag == "iframe":
             self.en_iframe = True
+
     def handle_endtag(self, tag):
         if tag == "script":
             self.en_script = False
@@ -306,8 +328,16 @@ class RenderizadorParser(HTMLParser):
         elif tag == "h1":
             self.en_h1 = False
             self.salida.append(("texto", ""))
-        elif tag in ("h2", "h3", "h4", "h5", "h6"):
+        elif tag == "h2":
             self.en_h2 = False
+        elif tag == "h3":
+            self.en_h3 = False
+        elif tag == "h4":
+            self.en_h4 = False
+        elif tag == "h5":
+            self.en_h5 = False
+        elif tag == "h6":
+            self.en_h6 = False
             self.salida.append(("texto", ""))
         elif tag == "li":
             self.en_li = False
@@ -316,6 +346,7 @@ class RenderizadorParser(HTMLParser):
             self.href = ""
         elif tag == "div":
             self.en_div = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "span":
             self.en_span = False
         elif tag == "table":
@@ -340,18 +371,25 @@ class RenderizadorParser(HTMLParser):
             self.en_textarea = False
         elif tag == "header":
             self.en_header = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "footer":
             self.en_footer = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "nav":
             self.en_nav = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "section":
             self.en_section = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "article":
             self.en_article = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "aside":
             self.en_aside = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "figure":
             self.en_figure = False
+            self.indent_level = max(0, self.indent_level - 1)
         elif tag == "figcaption":
             self.en_figcaption = False
         elif tag == "video":
@@ -387,7 +425,32 @@ class RenderizadorParser(HTMLParser):
             self.salida.append(("texto", "=== " + texto.upper() + " ==="))
         elif self.en_h2:
             self.salida.append(("texto", "-- " + texto + " --"))
+        elif self.en_h3:
+            self.salida.append(("texto", "- " + texto + " -"))
+        elif self.en_h4:
+            self.salida.append(("texto", "• " + texto + " •"))
+        elif self.en_h5:
+            self.salida.append(("texto", "• " + texto + " •"))
+        elif self.en_h6:
+            self.salida.append(("texto", "• " + texto + " •"))
         elif self.en_li:
             self.salida.append(("texto", "  • " + texto))
+        elif self.en_button:
+            self.salida.append(("texto", f"[BOTÓN: {texto}]"))
+        elif self.en_label:
+            self.salida.append(("texto", f"{texto}:"))
+        elif self.en_textarea:
+            self.salida.append(("texto", f"[ÁREA DE TEXTO]\n{texto}\n[FIN ÁREA]"))
+        elif self.en_th:
+            self.salida.append(("texto", f"║ {texto} ║"))
+        elif self.en_td:
+            self.salida.append(("texto", f"  {texto}"))
+        elif self.en_figcaption:
+            self.salida.append(("texto", f"Figura: {texto}"))
+        elif self.en_span:
+            self.salida.append(("texto", texto))
+        elif self.en_header or self.en_footer or self.en_nav or self.en_section or self.en_article or self.en_aside or self.en_div:
+            prefijo = "    " * max(0, self.indent_level)
+            self.salida.append(("texto", prefijo + texto))
         else:
             self.salida.append(("texto", texto))

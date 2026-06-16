@@ -315,8 +315,11 @@ class VentanaPrincipal:
             "https://httpbin.org/get",
             "https://www.iana.org/domains/reserved",
             "https://info.cern.ch",
+            "https://www.google.com",
+            "https://youtube.com",
             "https://text.npr.org",
             "https://www.utalca.cl",
+            
         ]
         for url in urls_default:
             try:
