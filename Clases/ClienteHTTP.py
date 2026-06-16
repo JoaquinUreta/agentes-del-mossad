@@ -1,5 +1,7 @@
 import http.client
-
+import socket
+from urllib.parse import urljoin
+from RenderAvanzado import RenderAvanzado
 
 class ClienteHTTP:
     """
@@ -7,6 +9,10 @@ class ClienteHTTP:
     Soporta tanto conexiones seguras (HTTPS) como no seguras (HTTP),
     y maneja errores de conexión y tiempo de espera.
     """
+    def __init__(self):
+        self.render = RenderAvanzado()
+        self.estado = ""
+        self.headers_respuesta = {}
 
     def buscarurl(self, url, timeout=10):
         """
@@ -38,71 +44,51 @@ class ClienteHTTP:
             - TimeoutError: Retorna un HTML indicando tiempo agotado y None como status.
             - Cualquier otra excepción: Retorna un HTML con el mensaje de error y None.
         """
-        # Detectar protocolo y limpiar la URL
-        if url.startswith("https://"):
-            usar_https = True
-            url = url[len("https://"):]
-        elif url.startswith("http://"):
-            usar_https = False
-            url = url[len("http://"):]
-        else:
-            usar_https = True  # Por defecto HTTPS si no especifica
-
-        # Separar host y path
-        if "/" in url:
-            host, path = url.split("/", 1)
-            path = "/" + path
-        else:
-            host = url
-            path = "/"
-
-        HEADERS = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,*/*;q=0.9",
-            "Accept-Language": "es-419,es;q=0.9",
-        }
         MAX_REDIRECCIONES = 5
-
         try:
+            protocolo, host, puerto, path,tipo = self.render.soporte_url(url)
             for _ in range(MAX_REDIRECCIONES):
-                if usar_https:
-                    conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
-                else:
-                    conn = http.client.HTTPConnection(host, 80, timeout=timeout)
-
-                conn.request("GET", path, headers=HEADERS)
-                response = conn.getresponse()
-                status = response.status
-
-                # Seguir redirecciones 301 / 302 / 303 / 307 / 308
-                if status in (301, 302, 303, 307, 308):
-                    location = response.getheader("Location", "")
-                    conn.close()
-                    if not location:
-                        return "<h1>Redirección sin destino</h1>", status
-                    # Actualizar host/path con la nueva URL
-                    if location.startswith("https://"):
-                        usar_https = True
-                        location = location[len("https://"):]
-                    elif location.startswith("http://"):
-                        usar_https = False
-                        location = location[len("http://"):]
-                    # Redirección relativa (solo cambia el path)
-                    if "/" in location:
-                        host, path = location.split("/", 1)
-                        path = "/" + path
-                    else:
-                        host = location
-                        path = "/"
-                    continue
-
-                html = response.read().decode("utf-8", errors="replace")
-                conn.close()
-                return html, status
-
-            return "<h1>Demasiadas redirecciones</h1>", None
-
-        except TimeoutError:
-            return "<h1>Tiempo de espera agotado</h1>", None
+                conn = None
+                try:
+                    headers = {
+                        "Host": host,
+                        "User-Agent": "...",
+                        "Accept": "text/html,application/xhtml+xml,*/*;q=0.9",
+                        "Accept-Language": "es-419,es;q=0.9",
+                        "Connection": "close"
+                        }
+                    try:
+                        if protocolo == "https":
+                            conn = http.client.HTTPSConnection(host, puerto or 443, timeout=timeout)
+                        else:
+                            conn = http.client.HTTPConnection(host, puerto or 80, timeout=timeout)
+                        conn.request("GET", path, headers=headers)
+                        response = conn.getresponse()
+                    except Exception:
+                        if protocolo == "https":
+                            conn = http.client.HTTPConnection(host, 80, timeout=timeout)
+                            conn.request("GET", path, headers=headers)
+                            response = conn.getresponse()
+                        else:
+                            raise
+                    self.estado = f"{response.status} {response.reason}"
+                    self.headers_respuesta = dict(response.getheaders())
+                    if response.status in (301, 302, 303, 307, 308):
+                        location = response.getheader("Location")
+                        if not location:
+                            return ("<h1>Redirección sin destino</h1>", response.status)
+                        location = urljoin(f"{protocolo}://{host}", location)
+                        protocolo, host, puerto, path, tipo = self.render.soporte_url(location)
+                        continue
+                    cuerpo = response.read().decode("utf-8", errors="replace")
+                    return cuerpo, response.status
+                finally:
+                    if conn:
+                        conn.close()
+            return ("<h1>Demasiadas redirecciones</h1>", None)
+        except socket.timeout:
+            self.estado = "Timeout"
+            return ("<h1>Tiempo de espera agotado</h1>", None)
         except Exception as e:
-            return f"<h1>Error al conectar</h1><p>{e}</p>", None
+            self.estado = f"Error: {type(e).__name__}"
+            return ("<h1>Error al conectar</h1>", None)

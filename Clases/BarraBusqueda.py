@@ -1,9 +1,9 @@
 import os
 import tkinter as tk
+import ipaddress
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
-
 
 class BarraBusqueda:
     """
@@ -36,6 +36,8 @@ class BarraBusqueda:
         self.on_modo_cambio = on_modo_cambio
         self.navegador=navegador
         self._navegacion_interna = False
+        self.cliente = ClienteHTTP()
+        self.modo_busqueda_web = False
 
         # Callback para actualizar el título de la pestaña.
         self.on_titulo_cambio = None
@@ -55,6 +57,7 @@ class BarraBusqueda:
         self.top_frame.columnconfigure(3, weight=0)
         self.top_frame.columnconfigure(4, weight=1)
         self.top_frame.columnconfigure(5, weight=0)
+        self.top_frame.columnconfigure(6, weight=0)
 
         # ── Estilos ──────────────────────────────────────────────────
         self.style.configure("button.TButton", background="#FFFFFF", foreground="#000")
@@ -105,6 +108,13 @@ class BarraBusqueda:
         self.button_mode["menu"] = menumode
         menumode.add_command(label="Búsqueda Local",  command=lambda: self._cambiar_modo("Local"))
         menumode.add_command(label="Búsqueda Online", command=lambda: self._cambiar_modo("Online"))
+
+        # ── Botón MotorBúsqueda──────────────────
+        self.button_motor = ttk.Button(
+             self.top_frame,
+             text="Motor",
+             command=self.activar_motor)
+        self.button_motor.grid(row=0, column=6)
 
         # ── Campo de Entrada (Buscador) ────────────────────────────────
         self.frame_buscador = ttk.Entry(
@@ -207,81 +217,58 @@ class BarraBusqueda:
         Callback llamado por el RenderizadorParser al hacer click en un enlace.
         Resuelve automáticamente si es local o remoto, ajusta el modo y navega.
         """
+        abrir_nueva_pestana = False
+        if url.startswith("newtab://"):
+            abrir_nueva_pestana = True
+        url = url.replace("newtab://", "")
         if url.startswith(("http://", "https://", "www.")):
             self._cambiar_modo("Online")
             self.entrada_var.set(url)
         else:
-            if self.Status:  
+            if self.Status:
                 url_actual = self.entrada_var.get().strip()
                 from urllib.parse import urljoin
                 nueva_url = urljoin(url_actual, url)
                 self._cambiar_modo("Online")
                 self.entrada_var.set(nueva_url)
-            else:  
+            else:
                 if self.ruta_actual:
                     carpeta_actual = os.path.dirname(self.ruta_actual)
                     ruta_completa = os.path.normpath(os.path.join(carpeta_actual, url))
                 else:
                     ruta_completa = os.path.abspath(url)
-                self._cambiar_modo("Local")
-                self.entrada_var.set(ruta_completa)
-
+            self._cambiar_modo("Local")
+            self.entrada_var.set(ruta_completa)
+        if abrir_nueva_pestana and self.navegador:
+            self.navegador.nueva_pestana(self.entrada_var.get())
+            return
         self.iniciar_busqueda()
 
     def iniciar_busqueda(self):
-        formato_correcto, extencion_correcta = self.URL_absoluta()
+        es_valida, mensaje = self.URL_absoluta()
         if self.Status:
-            if formato_correcto and extencion_correcta:
-                self.barra_progreso.set("Buscando...")
-                self.progress.start(10)
-                self.parent.after(3000, self._ejecutar_proceso)
+            if not es_valida:
+                messagebox.showerror("Error de conexión",mensaje)
                 return
-            if not formato_correcto:
-                messagebox.showerror("error de entrada", "La URL debe comenzar con http:// o https://")
-                return
-            if not extencion_correcta:
-                messagebox.showerror("error de entrada", "La URL no tiene una extensión válida")
-                return
-        else:
-            self.barra_progreso.set("Buscando...")
-            self.progress.start(10)
-            self.parent.after(3000, self._ejecutar_proceso)
+        self.barra_progreso.set("Buscando...")
+        self.progress.start(10)
+        self.parent.after(2000, self._ejecutar_proceso) 
 
     def URL_absoluta(self):
         entrada = self.entrada_var.get().strip()
         if not entrada:
-            return False, False
-
-        if not self.Status:
-            return True, True
-
+            return False, "URL vacía"
         if not entrada.lower().startswith(("http://", "https://")):
-            entrada = "https://" + entrada
-            self.entrada_var.set(entrada)
+            host = entrada.split("/")[0]
+            try:
+                ipaddress.ip_address(host)
+                entrada = "http://" + entrada
+            except ValueError:
+                entrada = "https://" + entrada
         if "://" not in entrada:
             return False, False
-        esquema, resto = entrada.split("://", 1)
-        esquema = esquema.lower()
-        if esquema not in ("http", "https"):
-            return False, False
-        host_port, _, _ = resto.partition("/")
-        if not host_port:
-            return False, False
-        host, sep, port = host_port.partition(":")
-        host = host.lower()
-        if not host:
-            return False, False
-        if sep:
-            if not port.isdigit() or not (1 <= int(port) <= 65535):
-                return False, False
-        if host == "localhost":
-            return True, True
-        if "." not in host:
-            return False, False
-        extencion = host.split(".")[-1].lower()
-        if extencion in ["com", "org", "net", "io", "gov", "cl"]:
-            return True, True
-        return True, False
+        self.entrada_var.set(entrada)
+        return True, ""
 
     def _ejecutar_proceso(self):
         self.progress.stop()
@@ -300,7 +287,8 @@ class BarraBusqueda:
         texto = self.entrada_var.get().strip()
         # Se inyecta 'self.navegar_desde_hipervinculo' para conectar el click con este componente
         parser = RenderizadorParser(self.area_contenido, callback_navegacion=self.navegar_desde_hipervinculo)
-
+        if self.modo_busqueda_web:
+            return self._ejecutar_motor()
         # ── Flujo Modo Online ─────────────────────────────────────────
         if self.Status:
             if not texto:
@@ -309,12 +297,9 @@ class BarraBusqueda:
             try:
                 self.barra_progreso.set(f"Cargando {texto}...")
                 self.parent.update_idletasks()
-
-                cliente = ClienteHTTP()
-                html_string, status = cliente.buscarurl(texto)
-
+                html_string, status = self.cliente.buscarurl(texto)
                 if status == 200:
-                    self.barra_progreso.set(f"200 OK — {texto}")
+                    self.barra_progreso.set(f"{self.cliente.estado} — {texto}")
                     parser.renderizar_desde_string(html_string, ruta_base=texto)
                     if self.navegador and not self._navegacion_interna:#Guarda en NavegaAvanzada la url actual
                         self.navegador.navegar(texto)
@@ -339,16 +324,15 @@ class BarraBusqueda:
                     self.barra_progreso.set(f"{status} — {texto}")
                     messagebox.showwarning("Aviso", f"El servidor respondió con código {status}")
                     return False
-            except Exception as e:
-                self.barra_progreso.set("Error inesperado")
-                messagebox.showerror("Error", f"Ocurrió un error al conectar:\n{e}")
+            except ValueError as e:
+                self.barra_progreso.set(str(e))
+                messagebox.showerror("Error de conexión", str(e))
                 return False
 
         # ── Flujo Modo Local ──────────────────────────────────────────
         if not os.path.isfile(texto):
             messagebox.showerror("Error", "El archivo no existe")
             return False
-
         if not texto.lower().endswith(".html"):
             continuar = messagebox.askyesno(
                 "Advertencia",
@@ -356,7 +340,6 @@ class BarraBusqueda:
             )
             if not continuar:
                 return False
-
         try:
             self.ruta_actual = texto
             parser.renderizar(self.ruta_actual)
@@ -389,7 +372,6 @@ class BarraBusqueda:
             self._navegacion_interna = True
             try:
                 self.entrada_var.set(url)
-                self._actualizar_botones_navegacion()
                 self.iniciar_busqueda()
             finally:
                 self._navegacion_interna = False
@@ -399,10 +381,10 @@ class BarraBusqueda:
         if not self.navegador:
             return
         url = self.navegador.adelante()
-        if url:#Si se encuentra una url del arreglo navegador,el boton puede hacer la busqueda siguiente            self._navegacion_interna = True
+        if url:#Si se encuentra una url del arreglo navegador,el boton puede hacer la busqueda siguiente            
+            self._navegacion_interna = True
             try:
                 self.entrada_var.set(url)
-                self._actualizar_botones_navegacion()
                 self.iniciar_busqueda()
             finally:
                 self._navegacion_interna = False
@@ -419,8 +401,32 @@ class BarraBusqueda:
             self.button_adelante.config(state="normal")
         else:#Desahabilita boton adelante si no hay elementos
             self.button_adelante.config(state="disabled")
-    
 
+    def activar_motor(self):
+        self.modo_busqueda_web = True
+        parser = RenderizadorParser(self.area_contenido)
+        html = """
+        <h1>Motor de Búsqueda Simulado</h1>
+        <p>Escribe tu búsqueda en la barra superior y presiona Ir</p>
+        """
+        parser.renderizar_desde_string(html, ruta_base="motor://local")
+
+    def _ejecutar_motor(self):
+        texto = self.entrada_var.get().strip()
+        resultados = self.motor.buscar(texto)
+        if not resultados:
+            html = "<h2>Sin resultados</h2><p>No se encontraron coincidencias</p>"
+        else:
+            html = "<h2>Resultados de búsqueda</h2><ul>"
+        for titulo, url in resultados:
+            html += f'<li><a href="{url}">{titulo} - {url}</a></li>'
+            html += "</ul>"
+            parser = RenderizadorParser(
+            self.area_contenido,
+            callback_navegacion=self.navegar_desde_hipervinculo)
+        parser.renderizar_desde_string(html, ruta_base="motor://")
+        return True
+    
     def actualizar_tema(self, bg_frame, bg_entry, fg_entry, bg_boton, fg_boton, active_bg):
         self.top_frame.config(bg=bg_frame)
         self.estado_frame.config(bg=bg_frame)
