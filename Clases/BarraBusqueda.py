@@ -4,7 +4,7 @@ import ipaddress
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
-import MotorBusqueda
+from MotorBusqueda import MotorBusqueda
 class BarraBusqueda:
     """
     Componente de interfaz que representa la barra de navegación del explorador.
@@ -37,7 +37,9 @@ class BarraBusqueda:
         self.navegador=navegador
         self._navegacion_interna = False
         self.cliente = ClienteHTTP()
+        self.motor = MotorBusqueda()
         self.modo_busqueda_web = False
+        self.modo_motor_activo = False
 
         # Callback para actualizar el título de la pestaña.
         self.on_titulo_cambio = None
@@ -46,6 +48,7 @@ class BarraBusqueda:
         self.entrada_var = tk.StringVar()
         self.barra_progreso = tk.StringVar()
         self.modo_busqueda = tk.StringVar(value="Online")
+        self.motor_var = tk.StringVar()
         self.Status = True  # True = Online, False = Local
         self.url_correcta = 0
 
@@ -218,6 +221,9 @@ class BarraBusqueda:
         Resuelve automáticamente si es local o remoto, ajusta el modo y navega.
         """
         abrir_nueva_pestana = False
+        self.modo_busqueda_web = False
+        self.modo_motor_activo = False
+        self.modo_busqueda_web = False
         if url.startswith("newtab://"):
             abrir_nueva_pestana = True
         url = url.replace("newtab://", "")
@@ -253,7 +259,7 @@ class BarraBusqueda:
         self.barra_progreso.set("Buscando...")
         self.progress.start(10)
         self.parent.after(2000, self._ejecutar_proceso) 
-
+        
     def URL_absoluta(self):
         entrada = self.entrada_var.get().strip()
         if not entrada:
@@ -403,27 +409,45 @@ class BarraBusqueda:
             self.button_adelante.config(state="disabled")
 
     def activar_motor(self):
-        self.modo_busqueda_web = True
-        parser = RenderizadorParser(self.area_contenido)
-        html = """
-        <h1>Motor de Búsqueda Simulado</h1>
-        <p>Escribe tu búsqueda en la barra superior y presiona Ir</p>
-        """
-        parser.renderizar_desde_string(html, ruta_base="motor://local")
-
+        if self.modo_motor_activo:
+            return
+        self.modo_motor_activo = True
+        self.modo_busqueda_web = False
+        for widget in self.area_contenido.winfo_children():
+            widget.destroy()
+        frame = tk.Frame(self.area_contenido)
+        frame.pack(expand=True)
+        tk.Label(frame,text="Motor de Búsqueda Simulado",font=("Arial", 22, "bold")).pack(pady=20)
+        entrada_motor = tk.Entry(frame, width=50, textvariable=self.motor_var)
+        entrada_motor.pack(pady=10)
+        def buscar():
+            texto = self.motor_var.get().strip()
+            self.entrada_var.set(texto)
+            for widget in self.area_contenido.winfo_children():
+                widget.destroy()
+            self._ejecutar_motor()
+        tk.Button(frame,text="Buscar",command=buscar).pack(pady=10)
+        
     def _ejecutar_motor(self):
+        self.modo_busqueda_web = False
+        self.modo_motor_activo = True
         texto = self.entrada_var.get().strip()
-        resultados = self.MotorBusqueda.buscar(texto)
+        resultados = self.motor.buscar(texto)
         if not resultados:
-            html = "<h2>Sin resultados</h2><p>No se encontraron coincidencias</p>"
+            html = """
+            <h2>Sin resultados</h2>
+            <p>La busqueda no ha producido resultados.</p>
+            """
         else:
             html = "<h2>Resultados de búsqueda</h2><ul>"
-        for titulo, url in resultados:
-            html += f'<li><a href="{url}">{titulo} - {url}</a></li>'
+            for titulo, url in resultados:
+                html += (
+                    f'<li>'
+                    f'<a href="newtab://{url}">{titulo}</a><br>'
+                    f'{url}'
+                    f'</li><br>' )
             html += "</ul>"
-            parser = RenderizadorParser(
-            self.area_contenido,
-            callback_navegacion=self.navegar_desde_hipervinculo)
+        parser = RenderizadorParser(self.area_contenido,callback_navegacion=self.navegar_desde_hipervinculo)
         parser.renderizar_desde_string(html, ruta_base="motor://")
         return True
     
