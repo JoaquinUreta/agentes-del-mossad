@@ -199,257 +199,115 @@ class RenderizadorParser(HTMLParser):
             self.renderizar(ruta_completa)
 
     def handle_starttag(self, tag, attrs):
-
-        etiquetas_soportadas={"html","head","body","meta","link","!doctype",
-            "script","style","title","h1","h2","h3","h4","h5","h6",
-            "p","div","section","article","header","footer","nav",
-            "ul","ol","li","br","img","a","span","table","tr","th","td","form","input","label",
-            "button","select","textarea","nav","section","article","aside","figure","figcaption",
-            "video","audio","source","track","canvas","svg","picture","iframe"
-            }
+        etiquetas_soportadas = {
+            "html","head","body","meta","link","!doctype", "script","style","title",
+            "h1","h2","h3","h4","h5","h6", "p","div","section","article","header",
+            "footer","nav","ul","ol","li","br","img","a","span","table","tr","th",
+            "td","form","input","label","button","select","textarea","aside",
+            "figure","figcaption","video","audio","source","track","canvas","svg",
+            "picture","iframe"
+        }
+        
+        tag_lower = tag.lower()
         attr_dict = dict(attrs)
         self.attrs_actuales = attr_dict
-        if tag.lower()not in etiquetas_soportadas:
-            self.salida.append(("error",f"Este elemento <{tag}> no se puede renderizar"))
+        
+        if tag_lower not in etiquetas_soportadas:
+            self.salida.append(("error", f"Este elemento <{tag}> no se puede renderizar"))
+            return
+
+        # Control de Scripts y Estilos (para ignorar su contenido de texto plano)
+        if tag_lower == "script": self.en_script = True
+        elif tag_lower == "style": self.en_style = True
+        elif tag_lower == "title": self.en_title = True
+        
+        # Encabezados
+        elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            # Dinámicamente seteamos la bandera (ej: self.en_h1 = True) usando setattr
+            setattr(self, f"en_{tag_lower}", True)
+            self.salida.append(("texto", ""))
             
-        if tag == "script":
-            self.en_script = True
-        elif tag == "style":
-            self.en_style = True
-        if tag == "title":
-            self.en_title = True
-        elif tag == "h1":
-            self.en_h1 = True
-            self.salida.append(("texto", ""))
-        elif tag == "h2":
-            self.en_h2 = True
-            self.salida.append(("texto", ""))
-        elif tag == "h3":
-            self.en_h3 = True
-            self.salida.append(("texto", ""))
-        elif tag == "h4":
-            self.en_h4 = True
-            self.salida.append(("texto", ""))
-        elif tag == "h5":
-            self.en_h5 = True
-            self.salida.append(("texto", ""))
-        elif tag == "h6":
-            self.en_h6 = True
-            self.salida.append(("texto", ""))
-        elif tag == "div":
-            self.en_div = True
+        # Bloques con Identación
+        elif tag_lower in ("div", "section", "article", "header", "footer", "nav", "aside"):
+            setattr(self, f"en_{tag_lower}", True)
             self.salida.append(("texto", ""))
             self.indent_level += 1
-        elif tag in ("section", "article", "header", "footer", "nav", "aside"):
+            
+        elif tag_lower == "p":
             self.salida.append(("texto", ""))
-            self.indent_level += 1
-        elif tag == "p":
+        elif tag_lower in ("ul", "ol"):
             self.salida.append(("texto", ""))
-        elif tag in ("ul", "ol"):
-            self.salida.append(("texto", ""))
-        elif tag == "li":
+        elif tag_lower == "li":
             self.en_li = True
-        elif tag == "br":
+        elif tag_lower == "br":
             self.salida.append(("texto", ""))
-        elif tag == "img":
-            src = ""
-            alt = ""
-            for attr in attrs:
-                if attr[0] == "src":
-                    src = attr[1]
-                elif attr[0] == "alt":
-                    alt = attr[1]
+            
+        # Imágenes (Manejo de Atributos directo)
+        elif tag_lower == "img":
+            src = attr_dict.get("src", "")
+            alt = attr_dict.get("alt", "")
             if src:
                 self.salida.append(("imagen", src, alt))
-        elif tag == "a":
+                
+        # Enlaces
+        elif tag_lower == "a":
             self.en_a = True
-            for attr in attrs:
-                if attr[0] == "href":
-                    self.href = attr[1]
-        elif tag == "span":
-            self.en_span = True
-        elif tag == "table":
-            self.en_table = True
-        elif tag == "tr":
-            self.en_tr = True
-        elif tag == "th":
-            self.en_th = True
-        elif tag == "td":
-            self.en_td = True
-        elif tag == "form":
-            self.en_form = True
-        elif tag == "input":
-            self.en_input = True
-        elif self.en_button:
-            self.en_button = True
-        elif tag == "label":
-            self.en_label = True
-        elif tag == "select":
-            self.en_select = True
-        elif tag == "textarea":
-            self.en_textarea = True
-        elif tag == "nav":
-            self.en_nav = True
-        elif tag == "section":
-            self.en_section = True
-        elif tag == "article":
-            self.en_article = True
-        elif tag == "aside":
-            self.en_aside = True
-        elif tag == "figure":
-            self.en_figure = True
-        elif tag == "figcaption":
-            self.en_figcaption = True
-        elif tag == "video":
-            self.en_video = True
-        elif tag == "audio":
-            self.en_audio = True
-        elif tag == "source":
-            self.en_source = True
-        elif tag == "track":
-            self.en_track = True
-        elif tag == "canvas":
-            self.en_canvas = True
-        elif tag == "svg":
-            self.en_svg = True
-        elif tag == "picture":
-            self.en_picture = True
-        elif tag == "iframe":
-            self.en_iframe = True
+            self.href = attr_dict.get("href", "")
+            
+        # Elementos de Formulario y otros Inline
+        elif tag_lower in ("span", "table", "tr", "th", "td", "form", "input", "label", "button", "select", "textarea", "figure", "figcaption", "video", "audio", "source", "track", "canvas", "svg", "picture", "iframe"):
+            setattr(self, f"en_{tag_lower}", True)
 
     def handle_endtag(self, tag):
-        if tag == "script":
-            self.en_script = False
-        elif tag == "style":
-            self.en_style = False
-
-        if tag == "title":
-            self.en_title = False
-        elif tag == "h1":
-            self.en_h1 = False
-            self.salida.append(("texto", ""))
-        elif tag == "h2":
-            self.en_h2 = False
-        elif tag == "h3":
-            self.en_h3 = False
-        elif tag == "h4":
-            self.en_h4 = False
-        elif tag == "h5":
-            self.en_h5 = False
-        elif tag == "h6":
-            self.en_h6 = False
-            self.salida.append(("texto", ""))
-        elif tag == "li":
+        tag_lower = tag.lower()
+        
+        if tag_lower == "script": self.en_script = False
+        elif tag_lower == "style": self.en_style = False
+        elif tag_lower == "title": self.en_title = False
+        elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            setattr(self, f"en_{tag_lower}", False)
+            if tag_lower == "h1" or tag_lower == "h6":
+                self.salida.append(("texto", ""))
+        elif tag_lower == "li":
             self.en_li = False
-        elif tag == "a":
+        elif tag_lower == "a":
             self.en_a = False
             self.href = ""
-        elif tag == "div":
-            self.en_div = False
+        # Reducción de indentación al cerrar bloques
+        elif tag_lower in ("div", "section", "article", "header", "footer", "nav", "aside"):
+            setattr(self, f"en_{tag_lower}", False)
             self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "span":
-            self.en_span = False
-        elif tag == "table":
-            self.en_table = False
-        elif tag == "tr":
-            self.en_tr = False
-        elif tag == "th":
-            self.en_th = False
-        elif tag == "td":
-            self.en_td = False
-        elif tag == "form":
-            self.en_form = False
-        elif tag == "input":
-            self.en_input = False
-        elif tag == "label":
-            self.en_label = False
-        elif tag == "button":
-            self.en_button = False
-        elif tag == "select":
-            self.en_select = False
-        elif tag == "textarea":
-            self.en_textarea = False
-        elif tag == "header":
-            self.en_header = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "footer":
-            self.en_footer = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "nav":
-            self.en_nav = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "section":
-            self.en_section = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "article":
-            self.en_article = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "aside":
-            self.en_aside = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "figure":
-            self.en_figure = False
-            self.indent_level = max(0, self.indent_level - 1)
-        elif tag == "figcaption":
-            self.en_figcaption = False
-        elif tag == "video":
-            self.en_video = False
-        elif tag == "audio":
-            self.en_audio = False
-        elif tag == "source":
-            self.en_source = False
-        elif tag == "track":
-            self.en_track = False
-        elif tag == "canvas":
-            self.en_canvas = False
-        elif tag == "svg":
-            self.en_svg = False
-        elif tag == "picture":
-            self.en_picture = False
-        elif tag == "iframe":
-            self.en_iframe = False
+        elif tag_lower in ("span", "table", "tr", "th", "td", "form", "input", "label", "button", "select", "textarea", "figure", "figcaption", "video", "audio", "source", "track", "canvas", "svg", "picture", "iframe"):
+            setattr(self, f"en_{tag_lower}", False)
 
     def handle_data(self, data):
         if self.en_script or self.en_style:
             return
 
         texto = data.strip()
-        if texto == "":
+        if not texto:
             return
 
-        if self.en_a and self.href != "":
+        # Procesamiento del texto según la bandera activa
+        if self.en_a and self.href:
             self.salida.append(("link", texto, self.href))
         elif self.en_title:
             self.titulo_pagina = texto
-        elif self.en_h1:
-            self.salida.append(("texto", "=== " + texto.upper() + " ==="))
-        elif self.en_h2:
-            self.salida.append(("texto", "-- " + texto + " --"))
-        elif self.en_h3:
-            self.salida.append(("texto", "- " + texto + " -"))
-        elif self.en_h4:
-            self.salida.append(("texto", "• " + texto + " •"))
-        elif self.en_h5:
-            self.salida.append(("texto", "• " + texto + " •"))
-        elif self.en_h6:
-            self.salida.append(("texto", "• " + texto + " •"))
-        elif self.en_li:
-            self.salida.append(("texto", "  • " + texto))
-        elif self.en_button:
-            self.salida.append(("texto", f"[BOTÓN: {texto}]"))
-        elif self.en_label:
-            self.salida.append(("texto", f"{texto}:"))
-        elif self.en_textarea:
-            self.salida.append(("texto", f"[ÁREA DE TEXTO]\n{texto}\n[FIN ÁREA]"))
-        elif self.en_th:
-            self.salida.append(("texto", f"║ {texto} ║"))
-        elif self.en_td:
-            self.salida.append(("texto", f"  {texto}"))
-        elif self.en_figcaption:
-            self.salida.append(("texto", f"Figura: {texto}"))
-        elif self.en_span:
-            self.salida.append(("texto", texto))
-        elif self.en_header or self.en_footer or self.en_nav or self.en_section or self.en_article or self.en_aside or self.en_div:
+        elif self.en_h1: self.salida.append(("texto", f"=== {texto.upper()} ==="))
+        elif self.en_h2: self.salida.append(("texto", f"-- {texto} --"))
+        elif self.en_h3: self.salida.append(("texto", f"- {texto} -"))
+        elif self.en_h4 or self.en_h5 or self.en_h6: self.salida.append(("texto", f"• {texto} •"))
+        elif self.en_li: self.salida.append(("texto", f"  • {texto}"))
+        elif self.en_button: self.salida.append(("texto", f"[BOTÓN: {texto}]"))
+        elif self.en_label: self.salida.append(("texto", f"{texto}:"))
+        elif self.en_textarea: self.salida.append(("texto", f"[ÁREA DE TEXTO]\n{texto}\n[FIN ÁREA]"))
+        elif self.en_th: self.salida.append(("texto", f"║ {texto} ║"))
+        elif self.en_td: self.salida.append(("texto", f"  {texto}"))
+        elif self.en_figcaption: self.salida.append(("texto", f"Figura: {texto}"))
+        elif self.en_span: self.salida.append(("texto", texto))
+        # Contenedores estructurales respetan indentación
+        elif (self.en_header or self.en_footer or self.en_nav or 
+                self.en_section or self.en_article or self.en_aside or self.en_div):
             prefijo = "    " * max(0, self.indent_level)
             self.salida.append(("texto", prefijo + texto))
         else:

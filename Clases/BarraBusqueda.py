@@ -4,7 +4,7 @@ import ipaddress
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
-
+import MotorBusqueda
 class BarraBusqueda:
     """
     Componente de interfaz que representa la barra de navegación del explorador.
@@ -413,7 +413,7 @@ class BarraBusqueda:
 
     def _ejecutar_motor(self):
         texto = self.entrada_var.get().strip()
-        resultados = self.motor.buscar(texto)
+        resultados = self.MotorBusqueda.buscar(texto)
         if not resultados:
             html = "<h2>Sin resultados</h2><p>No se encontraron coincidencias</p>"
         else:
