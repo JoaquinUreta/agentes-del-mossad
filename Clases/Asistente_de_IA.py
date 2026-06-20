@@ -1,83 +1,57 @@
 import http.client
 import json
 import socket
+import urllib.request
 
-class AsistenteIa:
+class AsistenteIA:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.modelo = "gemini-2.5-flash-lite"
+        self.host = "generativelanguage.googleapis.com"
+        self.path = f"/v1/models/{self.modelo}:generateContent?key={self.api_key}"
+        self.headers = {"Content-Type": "application/json"}
 
-    def __init__(self):
-        #Esta clave es de una cuenta secundaria mia
-        self.API_KEY = ""  # API key de Gemini
-
-        self.MODELO = "gemini-3.5-flash"
-        self.HOST = "generativelanguage.googleapis.com"
-        self.PATH = f"/v1/models/{self.MODELO}:generateContent?key={self.API_KEY}"
-
-    def enviar_peticion(self,comando_texto):
-
-        #Estrucutra de peticiones estandar para Gemini
-        headers = {
-            "Content-Type": "application/json"
-        }
+    def generar_respuesta(self, pregunta):
+        """Envía la consulta a Gemini y devuelve la respuesta formateada."""
         body = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": self.comando_texto}
-                    ]
-                }
-            ]
+            "contents": [{"parts": [{"text": pregunta}]}]
         }
-
-
         body_json = json.dumps(body)
 
-        #Conexion a Gemini Mediante HTTP Client y POST
         try:
-            conn = http.client.HTTPSConnection(self.HOST, timeout=10)
-            conn.request("POST", self.PATH, body=body_json, headers=headers)
+            # Conexión con un timeout definido de 10 segundos
+            conn = http.client.HTTPSConnection(self.host, timeout=10)
+            conn.request("POST", self.path, body=body_json, headers=self.headers)
 
-            #Almacenar respuesta de Gemini usando UFT 8
-            response = conn.getresponse() 
+            response = conn.getresponse()
             data = response.read().decode("utf-8")
-            conn.close()
 
-            #Verificar de respuesta exitosa desde Gemini
             if response.status == 200:
-                response_data = json.loads(data) #Esto es lo que devuelve la ia
-                
-                # 2. VALIDACIÓN DE RESPUESTA VACÍA: Navegación segura por el JSON
-                candidatos = response_data.get("candidates", [])
-                if not candidatos:
-                    return "<p style='color: red;'>Error: El comando no generó ninguna respuesta desde Gemini.</p>"
-                
-                partes = candidatos[0].get("content", {}).get("parts", [])
-                if not partes:
-                    return "<p style='color: red;'>Error: El comando no generó ninguna respuesta desde Gemini.</p>"
-                
-                texto_respuesta = partes[0].get("text", "").strip()
-                if not texto_respuesta:
-                    return "<p style='color: red;'>Error: El comando no generó ninguna respuesta desde Gemini.</p>"
-
-                # Si todo está correcto, devuelve la respuesta de la IA
-                return texto_respuesta
-            
+                result = json.loads(data)
+                respuesta = result["candidates"][0]["content"]["parts"][0]["text"]
+                return respuesta if respuesta.strip() else "Error: El comando no generó ninguna respuesta."
             else:
-                # Error en la API (ej. API Key mal escrita, cuota excedida)
-                return f"<p style='color: red;'>Error de API: {response.status} - {response.reason}</p>"
+                return f"Error: No es posible conectarse a Gemini. ({response.status} - {response.reason})"
 
-        # 3. CAPTURA DE TIMEOUT Y FALLOS DE RED
-        except socket.timeout: #La ventana de error en caso de que demore mas de 10 segundos
-            return "<p style='color: red;'>Error: Tiempo de espera de 10 segundos superado.</p>"
-        except (http.client.HTTPException, ConnectionError, socket.error): #Error en caso de problemas con la conexion
-            return "<p style='color: red;'>Error: No es posible conectarse a Gemini (Fallo de red).</p>"
+        except socket.timeout:
+            return "Error: El tiempo de espera de la solicitud superó los 10 segundos."
         except Exception as e:
-            # Ventana de eror para cualquier otro fallo no contemplado
-            return f"<p style='color: red;'>Error inesperado: {str(e)}</p>"
+            return "Error: No es posible conectarse a Gemini. Revisa tu conexión de red."
 
 
-#Test terminal
 
-pregunta= print(str(input("Pregunta: ")))
+    def cambiar_version(self): ## Esto es para la defensa, no es necesario modificarlo ni mostarlo en pantalla, no lo pide el proyecto
+        API_KEY = self.api_key
+        url = f"https://generativelanguage.googleapis.com/v1/models?key={API_KEY}"
 
-            
-
+        req = urllib.request.Request(url, method="GET")
+        try:
+            with urllib.request.urlopen(req) as response:
+                modelos = json.loads(response.read().decode("utf-8"))
+                print("--- Modelos disponibles en tu proyecto ---")
+                for modelo in modelos.get("models", []):
+                    print(f"- {modelo['name']}")
+        except urllib.error.HTTPError as e:
+            print(f"Error: {e.code}")
+            print(e.read().decode("utf-8"))
+    
