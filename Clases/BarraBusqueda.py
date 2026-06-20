@@ -4,7 +4,7 @@ import ipaddress
 from tkinter import ttk, messagebox, SUNKEN
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
-from MotorBusqueda import MotorBusqueda
+import MotorBusqueda
 class BarraBusqueda:
     """
     Componente de interfaz que representa la barra de navegación del explorador.
@@ -37,7 +37,7 @@ class BarraBusqueda:
         self.navegador=navegador
         self._navegacion_interna = False
         self.cliente = ClienteHTTP()
-        self.motor = MotorBusqueda()
+        self.motor = MotorBusqueda.MotorBusqueda()
         self.modo_busqueda_web = False
         self.modo_motor_activo = False
 
@@ -264,6 +264,8 @@ class BarraBusqueda:
         entrada = self.entrada_var.get().strip()
         if not entrada:
             return False, "URL vacía"
+        if not self.Status:
+            return True, ""
         if not entrada.lower().startswith(("http://", "https://")):
             host = entrada.split("/")[0]
             try:
@@ -272,7 +274,7 @@ class BarraBusqueda:
             except ValueError:
                 entrada = "https://" + entrada
         if "://" not in entrada:
-            return False, False
+            return False, ""
         self.entrada_var.set(entrada)
         return True, ""
 
@@ -431,23 +433,22 @@ class BarraBusqueda:
     def _ejecutar_motor(self):
         self.modo_busqueda_web = False
         self.modo_motor_activo = True
-        texto = self.entrada_var.get().strip()
-        resultados = self.motor.buscar(texto)
-        if not resultados:
+        texto=self.entrada_var.get().strip()
+        nombre_archivo=self.motor.buscar(texto)
+        if not nombre_archivo:
             html = """
             <h2>Sin resultados</h2>
             <p>La busqueda no ha producido resultados.</p>
             """
         else:
-            html = "<h2>Resultados de búsqueda</h2><ul>"
-            for titulo, url in resultados:
-                html += (
-                    f'<li>'
-                    f'<a href="newtab://{url}">{titulo}</a><br>'
-                    f'{url}'
-                    f'</li><br>' )
-            html += "</ul>"
-        parser = RenderizadorParser(self.area_contenido,callback_navegacion=self.navegar_desde_hipervinculo)
+            try:
+                ruta_proyecto = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+                ruta_completa_html = os.path.join(ruta_proyecto, "Consultas", nombre_archivo)
+                with open(ruta_completa_html, "r", encoding="utf-8") as f:
+                    html = f.read()
+            except FileNotFoundError:
+                html = f"<h2>Error</h2><p>El archivo local '{nombre_archivo}' no fue encontrado.</p>"
+        parser = RenderizadorParser(self.area_contenido, callback_navegacion=self.navegar_desde_hipervinculo)
         parser.renderizar_desde_string(html, ruta_base="motor://")
         return True
     
