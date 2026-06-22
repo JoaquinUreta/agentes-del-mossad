@@ -8,11 +8,19 @@ from tkinter import filedialog
 from Renderizador import RenderizadorParser
 from Historial import Historial
 from Pestaña import Pestaña, GestorPestañas
+from VentanaBusqueda import VentanaBusqueda
 
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
 FAVS_FILE     = os.path.join(BASE_DIR, "favoritos.json")
 HISTORIAL_FILE = os.path.join(BASE_DIR, "historial.json")
 MAX_FAVORITOS = 10
+
+# ─────────────────────────────────────────────
+#  ASISTENTE DE IA — configurar aquí la api_key de Gemini
+#  (déjala vacía "" si todavía no tienes una; el botón Asistente IA mostrará
+#  un aviso en vez de fallar silenciosamente)
+# ─────────────────────────────────────────────
+API_KEY_GEMINI = "AQUI VA LA APIKEY" #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # ─────────────────────────────────────────────
 #  PALETAS
@@ -196,10 +204,18 @@ class Ventana:
         )
         self.btn_cerrar_tab.grid(row=0, column=8, pady=10, padx=(0, 8))
 
+        # ── Motor de Búsqueda (Requerimiento 4) ───────────────────────
+        self.btn_motor_busqueda = tk.Button(
+            self.top_bar, text="🔍", font=FONT_ICON,
+            relief="flat", cursor="hand2", bd=0, padx=8,
+            command=self._abrir_motor_busqueda,
+        )
+        self.btn_motor_busqueda.grid(row=0, column=9, pady=10, padx=(0, 4))
+
         # ── Switch ONLINE / OFFLINE ───────────────────────────────────
 
         self.switch_frame = tk.Frame(self.top_bar)
-        self.switch_frame.grid(row=0, column=9, pady=10, padx=(4, 6))
+        self.switch_frame.grid(row=0, column=10, pady=10, padx=(4, 6))
 
         self.lbl_modo = tk.Label(
             self.switch_frame, text="ONLINE",
@@ -221,14 +237,14 @@ class Ventana:
             relief="flat", cursor="hand2", bd=0, padx=8,
             command=self._toggle_modo,
         )
-        self.mode_btn.grid(row=0, column=10, pady=10)
+        self.mode_btn.grid(row=0, column=11, pady=10)
 
         self.panel_btn = tk.Button(
             self.top_bar, text="☰", font=FONT_ICON,
             relief="flat", cursor="hand2", bd=0, padx=8,
             command=self._toggle_panel,
         )
-        self.panel_btn.grid(row=0, column=11, pady=10, padx=(0, 8))
+        self.panel_btn.grid(row=0, column=12, pady=10, padx=(0, 8))
 
     # ─────────────────────────────────────────
     #  CONTENT (splash + notebook)
@@ -322,6 +338,7 @@ class Ventana:
             style         = self.style_ttk,
             buttons_frame = self.buttons_frame,
             menu_savedurl = self.menu_savedurl,
+            api_key_ia    = API_KEY_GEMINI,
         )
         self.gestor.set_menu_historial_callback(self._on_historial_navegacion)
 
@@ -633,6 +650,37 @@ class Ventana:
         self.barra2_var.set(url)
 
     # ─────────────────────────────────────────
+    #  MOTOR DE BÚSQUEDA SIMULADO (Requerimiento 4)
+    # ─────────────────────────────────────────
+    def _abrir_motor_busqueda(self):
+        """Abre el popup modal del Motor de Búsqueda."""
+        VentanaBusqueda(
+            root=self.root,
+            theme=self.theme,
+            on_buscar=self._cargar_resultado_busqueda,
+        )
+
+    def _cargar_resultado_busqueda(self, ruta_html: str):
+        """
+        Callback invocado por VentanaBusqueda cuando hay un resultado válido.
+        Carga el HTML de resultados en la pestaña actualmente activa
+        (modo local/offline, ya que es un archivo en disco).
+        """
+        self._activar_navegador()
+        p = self.gestor.pestaña_activa()
+        if p is None:
+            return
+        # Forzamos navegación local para este archivo, independientemente
+        # del modo online/offline activo, ya que es contenido simulado en disco.
+        p.barra.Status = False
+        p.barra.entrada_var.set(ruta_html)
+        p.barra.iniciar_busqueda()
+        self.sincronizar_barra_url(ruta_html)
+        self._actualizar_botones_nav(p)
+        # Restauramos el modo de navegación visible en la UI
+        p.barra.Status = self._modo_online
+
+    # ─────────────────────────────────────────
     #  BOTONES ADELANTE / ATRÁS / RECARGAR
     # ─────────────────────────────────────────
     def _navegar_atras(self):
@@ -719,6 +767,8 @@ class Ventana:
         self.accent_line.config(bg=T["accent"])
         self.logo_top.config(bg=T["topbar"], fg=T["accent"])
         self.favbtn.config(bg=T["topbar"], fg=T["text_dim"],
+                           activebackground=T["topbar"], activeforeground=T["accent"])
+        self.btn_motor_busqueda.config(bg=T["topbar"], fg=T["text_dim"],
                            activebackground=T["topbar"], activeforeground=T["accent"])
         self.mode_btn.config(bg=T["topbar"], fg=T["accent"],
                              activebackground=T["topbar"], activeforeground=T["text"])
@@ -830,6 +880,7 @@ class Ventana:
             btn.bind("<Leave>", lambda e: btn.config(fg=self.theme["text_dim"]))
 
         _hover(self.favbtn)
+        _hover(self.btn_motor_busqueda)
         _hover(self.panel_btn)
         _hover(self.btn_nueva_tab)
         _hover(self.btn_cerrar_tab)

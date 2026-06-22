@@ -32,6 +32,7 @@ class RenderizadorParser(HTMLParser):
         self.en_hr = False
         self.titulo_pagina = ""
         self.href = ""
+        self.target_actual = ""
         self.salida = []
         self.en_script = False
         self.en_style = False
@@ -110,6 +111,7 @@ class RenderizadorParser(HTMLParser):
             elif elemento[0] == "link":
                 texto_link = elemento[1]
                 ruta = elemento[2]
+                target = elemento[3] if len(elemento) > 3 else ""
 
                 inicio = self.area_contenido.index("insert")
                 self.area_contenido.insert("insert", texto_link + "\n")
@@ -129,8 +131,8 @@ class RenderizadorParser(HTMLParser):
                     self.area_contenido.tag_config(t, foreground="blue")
                     self.area_contenido.config(cursor="")
 
-                def al_hacer_clic(event, r=ruta): #Al presionar el hipervinculo se llame a abrir_link
-                    self.abrir_link(r)
+                def al_hacer_clic(event, r=ruta, t=target): #Al presionar el hipervinculo se llame a abrir_link
+                    self.abrir_link(r, t)
 
                 self.area_contenido.tag_bind(tag, "<Enter>", al_entrar)
                 self.area_contenido.tag_bind(tag, "<Leave>", al_salir)
@@ -179,10 +181,16 @@ class RenderizadorParser(HTMLParser):
             if alt:
                 self.area_contenido.insert("end", f"[{alt}]\n")
 
-    def abrir_link(self, ruta):
-        """ Redirige el click del hipervinculo a la barra de búsqueda. """
+    def abrir_link(self, ruta, target=""):
+        """ Redirige el click del hipervinculo a la barra de búsqueda.
+        Si target es '_blank', se le indica al callback que debe abrir
+        una pestaña nueva en lugar de navegar en la pestaña actual. """
         if self.callback_navegacion is not None:
-            self.callback_navegacion(ruta)
+            try:
+                self.callback_navegacion(ruta, target)
+            except TypeError:
+                # Compatibilidad con callbacks antiguos que solo reciben la url
+                self.callback_navegacion(ruta)
         else:
             carpeta_actual = os.path.dirname(self.ruta_actual)
             ruta_completa = os.path.join(carpeta_actual, ruta)
@@ -233,9 +241,12 @@ class RenderizadorParser(HTMLParser):
                 self.salida.append(("imagen", src, alt))
         elif tag == "a":
             self.en_a = True
+            self.target_actual = ""
             for attr in attrs:
                 if attr[0] == "href":
                     self.href = attr[1]
+                elif attr[0] == "target":
+                    self.target_actual = attr[1]
         elif tag == "span":
             self.en_span = True
         elif tag == "table":
@@ -305,6 +316,7 @@ class RenderizadorParser(HTMLParser):
         elif tag == "a":
             self.en_a = False
             self.href = ""
+            self.target_actual = ""
         elif tag == "div":
             self.en_div = False
         elif tag == "span":
@@ -371,7 +383,7 @@ class RenderizadorParser(HTMLParser):
             return
 
         if self.en_a and self.href != "":
-            self.salida.append(("link", texto, self.href))
+            self.salida.append(("link", texto, self.href, self.target_actual))
         elif self.en_title:
             self.titulo_pagina = texto
         elif self.en_h1:

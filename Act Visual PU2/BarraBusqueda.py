@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
+import queue
 from Renderizador import RenderizadorParser
 from ClienteHTTP import ClienteHTTP
 
@@ -20,6 +21,9 @@ class BarraBusqueda:
         btn_adelante=None,
         status_var=None,
         modo_online=True,
+        asistente_ia=None,
+        panel_chat_ia=None,
+        toggle_panel_ia=None,
     ):
         self.parent            = parent
         self.area_contenido    = area_contenido   # fallback
@@ -31,6 +35,9 @@ class BarraBusqueda:
         self.btn_adelante      = btn_adelante
         self.status_var        = status_var
         self.Status            = modo_online      # True = online, False = offline/local
+        self.asistente_ia      = asistente_ia     # AsistenteIA propio de esta pestaña
+        self.panel_chat_ia     = panel_chat_ia    # PanelChatIA propio de esta pestaña
+        self._toggle_panel_ia  = toggle_panel_ia  # callback de Pestaña para mostrar/ocultar
 
         self.entrada_var       = tk.StringVar()
         self.barra_progreso    = tk.StringVar(value="listo")
@@ -38,6 +45,7 @@ class BarraBusqueda:
         self._navegacion_interna = False          # evita doble registro en NavegaAvanzada
         self.botones_habilitar = []               # botones extra a habilitar tras carga
         self.boton_editar      = None
+        self._cola_respuestas_ia = queue.Queue()  # comunicación segura hilo IA -> hilo principal
 
         # ── Widget de entrada (se incrusta en 'parent') ───────────────
         self.frame = tk.Frame(parent)
@@ -47,6 +55,21 @@ class BarraBusqueda:
                                 font=("Courier New", 11), relief="flat")
         self.entrada.pack(side="left", fill="x", expand=True, ipady=4, padx=(4, 2))
         self.entrada.bind("<Return>", lambda e: self.iniciar_busqueda())
+
+        # ── Botón Asistente de IA (Requerimientos 5 y 6) ──────────────
+        # Cada pestaña tiene el suyo, conectado a su propia instancia
+        # de AsistenteIA y a su propio panel de chat lateral, por lo
+        # que funciona de forma independiente entre pestañas.
+        self.btn_asistente_ia = tk.Button(
+            self.frame, text="Asistente IA", font=("Segoe UI Symbol", 12),
+            relief="flat", cursor="hand2", bd=0, padx=8,
+            command=self.toggle_asistente_ia,
+        )
+        self.btn_asistente_ia.pack(side="left", padx=(2, 4))
+
+        # Conectar el panel de chat con esta BarraBusqueda (envío de preguntas)
+        if self.panel_chat_ia is not None:
+            self.panel_chat_ia.on_enviar_pregunta = self._procesar_pregunta_ia
 
         # Barra de progreso indeterminada (oculta por defecto)
         self.progress = ttk.Progressbar(self.frame, mode="indeterminate", length=60)
@@ -168,10 +191,12 @@ class BarraBusqueda:
     # ─────────────────────────────────────────────────────────────────
     #  NAVEGACIÓN POR HIPERVÍNCULO (callback del Renderizador)
     # ─────────────────────────────────────────────────────────────────
-    def navegar_desde_hipervinculo(self, url: str):
+    def navegar_desde_hipervinculo(self, url: str, target: str = ""):
         """
         Llamado cuando el usuario hace clic en un enlace renderizado.
         Resuelve la URL relativa, la pone en la barra y navega.
+        Si target == '_blank', se abre una pestaña nueva y se navega ahí
+        en lugar de hacerlo en la pestaña actual (igual que un navegador real).
         """
         # Resolver URLs relativas (locales)
         if not url.startswith(("http://", "https://", "file://")) and not os.path.isabs(url):
@@ -179,10 +204,114 @@ class BarraBusqueda:
                 base = os.path.dirname(self.ruta_actual)
                 url = os.path.join(base, url)
 
+        if target == "_blank" and self.gestor_pestañas is not None:
+            # Abrir en una pestaña nueva, sin tocar la pestaña actual
+            nueva = self.gestor_pestañas.nueva_pestaña("Nueva pestaña")
+            nueva.barra.navegar(url)
+            return
+
         self._navegacion_interna = True
         self.entrada_var.set(url)
         self._ejecutar_proceso()
         self._navegacion_interna = False
+
+    # ─────────────────────────────────────────────────────────────────
+    #  ASISTENTE DE IA — PANEL DE CHAT LATERAL (Requerimientos 5 y 6)
+    # ─────────────────────────────────────────────────────────────────
+    def toggle_asistente_ia(self):
+        """
+        Muestra u oculta el panel lateral de chat de ESTA pestaña.
+        Cada pestaña tiene su propio panel y su propia instancia de
+        AsistenteIA, por lo que la conversación es independiente entre
+        pestañas (Requerimiento 5/6).
+        """
+        if self._toggle_panel_ia is not None:
+            self._toggle_panel_ia()
+
+        if self.asistente_ia is None and self.panel_chat_ia is not None:
+            if not getattr(self, "_aviso_sin_apikey_mostrado", False):
+                self.panel_chat_ia.mostrar_error_ia(
+                    "Esta pestaña no tiene una api_key configurada "
+                    "para el Asistente de IA."
+                )
+                self.panel_chat_ia.set_entrada_habilitada(False)
+                self._aviso_sin_apikey_mostrado = True
+
+    def _procesar_pregunta_ia(self, pregunta: str):
+        """
+        Llamado por PanelChatIA cuando el usuario envía un mensaje.
+        Lanza la consulta a Gemini en un hilo secundario (no bloquea la UI).
+        El hilo NUNCA toca widgets de Tkinter directamente: solo deposita
+        el resultado en una queue.Queue thread-safe. El hilo principal
+        revisa esa cola periódicamente con root.after() (patrón seguro
+        recomendado para combinar threading con Tkinter).
+        """
+        if self.panel_chat_ia is not None:
+            self.panel_chat_ia.agregar_mensaje_usuario(pregunta)
+
+        if self.asistente_ia is None:
+            if self.panel_chat_ia is not None:
+                self.panel_chat_ia.mostrar_error_ia(
+                    "No es posible responder: falta configurar la api_key "
+                    "del Asistente de IA."
+                )
+            return
+
+        if self.panel_chat_ia is not None:
+            self.panel_chat_ia.mostrar_indicador_escribiendo()
+        self._set_status(f"Consultando IA: {pregunta}…")
+
+        hilo = threading.Thread(
+            target=self._hilo_pregunta_ia, args=(pregunta,), daemon=True
+        )
+        hilo.start()
+
+        # El polling se programa desde el hilo PRINCIPAL (aquí mismo),
+        # nunca desde dentro del hilo secundario.
+        self.parent.winfo_toplevel().after(100, self._revisar_cola_respuestas_ia)
+
+    def _hilo_pregunta_ia(self, pregunta: str):
+        """
+        Hilo secundario: SOLO hace red/IO (bloqueante), nunca toca Tkinter.
+        Deposita el resultado en la cola para que el hilo principal lo recoja.
+        """
+        try:
+            respuesta = self.asistente_ia.generar_respuesta(pregunta)
+        except Exception as e:
+            respuesta = f"Error: No es posible conectarse a Gemini. ({e})"
+
+        self._cola_respuestas_ia.put((pregunta, respuesta))
+
+    def _revisar_cola_respuestas_ia(self):
+        """
+        Ejecutado en el hilo PRINCIPAL (vía after). Revisa si ya llegó
+        la respuesta de la IA; si no, se reprograma a sí mismo.
+        """
+        try:
+            pregunta, respuesta = self._cola_respuestas_ia.get_nowait()
+        except queue.Empty:
+            # Aún no hay respuesta: reintentar en 100ms
+            self.parent.winfo_toplevel().after(100, self._revisar_cola_respuestas_ia)
+            return
+
+        self._finalizar_pregunta_ia(pregunta, respuesta)
+
+    def _finalizar_pregunta_ia(self, pregunta: str, respuesta: str):
+        """
+        Hilo principal: agrega la respuesta de la IA como burbuja nueva
+        en el panel de chat de ESTA pestaña (independiente de cuál esté
+        activa en el notebook en ese momento).
+        """
+        if self.panel_chat_ia is not None:
+            if respuesta.startswith("Error:"):
+                self.panel_chat_ia.mostrar_error_ia(respuesta)
+            else:
+                self.panel_chat_ia.agregar_mensaje_ia(respuesta)
+
+        if respuesta.startswith("Error:"):
+            self._set_status("Error en la consulta a la IA")
+        else:
+            self._set_status(f"Respuesta de la IA — {pregunta}")
 
     # ─────────────────────────────────────────────────────────────────
     #  HELPERS INTERNOS
