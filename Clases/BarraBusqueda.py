@@ -52,7 +52,7 @@ class BarraBusqueda:
         self.frame.grid(row=0, column=0, sticky="ew")
 
         self.entrada = tk.Entry(self.frame, textvariable=self.entrada_var,
-                                font=("Courier New", 11), relief="flat")
+                                font=("Arial", 11), relief="flat")
         self.entrada.pack(side="left", fill="x", expand=True, ipady=4, padx=(4, 2))
         self.entrada.bind("<Return>", lambda e: self.iniciar_busqueda())
 

@@ -47,9 +47,9 @@ LIGHT = {
     "topbar":   "#E8E2D8",
 }
 
-FONT_TITLE = ("Courier New", 38, "bold")
-FONT_SMALL = ("Courier New",  9)
-FONT_ENTRY = ("Courier New", 11)
+FONT_TITLE = ("Arial", 38, "bold")
+FONT_SMALL = ("Arial",  9)
+FONT_ENTRY = ("Arial", 11)
 FONT_ICON  = ("Segoe UI Symbol", 14)
 
 

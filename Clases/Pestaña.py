@@ -49,7 +49,7 @@ class Pestaña:
         self.main_area.rowconfigure(0, weight=1)
 
         self.area_contenido = tk.Text(self.main_area, state="disabled",
-                                      wrap="word", font=("Courier New", 11))
+                                      wrap="word", font=("Arial", 11))
         self.area_contenido.grid(row=0, column=0, sticky="nsew", padx=20, pady=10)
 
         # ── Panel lateral del chatbot (oculto por defecto) ─────────────
