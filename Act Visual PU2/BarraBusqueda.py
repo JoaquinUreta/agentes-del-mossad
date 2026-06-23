@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 import queue
-from Renderizador import RenderizadorParser
+from RenderAvanzado import RenderizadorParserAvanzado
 from ClienteHTTP import ClienteHTTP
 
 
@@ -116,6 +116,17 @@ class BarraBusqueda:
     # ─────────────────────────────────────────────────────────────────
     def _hilo_peticion_http(self, texto):
         """Petición HTTP en segundo plano; devuelve resultado al hilo principal."""
+        # ── Validación previa (Requerimiento 1, Hito 3) ──────────────
+        # Antes de gastar tiempo/timeout conectando, se valida protocolo,
+        # host y puerto con la misma regla que usa el renderizador.
+        try:
+            RenderizadorParserAvanzado.soportes_url(texto)
+        except ValueError as e:
+            self.parent.winfo_toplevel().after(
+                0, self._finalizar_validacion_fallida, texto, str(e)
+            )
+            return
+
         try:
             cliente = ClienteHTTP()
             html_string, status = cliente.buscarurl(texto)
@@ -127,16 +138,28 @@ class BarraBusqueda:
                 0, self._finalizar_peticion_http_error, e
             )
 
+    def _finalizar_validacion_fallida(self, texto, mensaje_error):
+        """Hilo principal: la URL no pasó soportes_url (puerto/host inválido)."""
+        area_destino = self._area_activa()
+        parser = RenderizadorParserAvanzado(
+            area_destino, callback_navegacion=self.navegar_desde_hipervinculo
+        )
+        parser.salida = [("error", mensaje_error)]
+        parser._mostrar_en_area()
+        self._set_status(f"Error — {mensaje_error}")
+        messagebox.showerror("Error de conexión", mensaje_error)
+        self._actualizar_botones_navegacion()
+
     def _finalizar_peticion_http(self, texto, html_string, status):
         """Hilo principal: renderiza el HTML recibido y actualiza controles."""
         area_destino = self._area_activa()
-        parser = RenderizadorParser(
+        parser = RenderizadorParserAvanzado(
             area_destino, callback_navegacion=self.navegar_desde_hipervinculo
         )
 
         if status == 200:
             self._set_status(f"200 OK — {texto}")
-            parser.renderizar_desde_string(html_string, ruta_base=texto)
+            parser.renderizar_desde_string(html_string, ruta_base=texto, validar_conexion=True)
             self._post_navegacion_ok(texto)
         elif status == 404:
             self._set_status(f"404 Not Found — {texto}")
@@ -163,7 +186,7 @@ class BarraBusqueda:
         """Carga y renderiza un archivo HTML local."""
         texto = self.entrada_var.get().strip()
         area_destino = self._area_activa()
-        parser = RenderizadorParser(
+        parser = RenderizadorParserAvanzado(
             area_destino, callback_navegacion=self.navegar_desde_hipervinculo
         )
 

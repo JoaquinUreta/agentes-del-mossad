@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Banco de Pruebas de Renderizado HTML</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f6f9;
+            color: #333333;
+        }
+        header {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        section {
+            background-color: #ffffff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        h1, h2, h3 {
+            color: #0f172a;
+        }
+        .test-box {
+            background-color: #e2e8f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 5px solid #3b82f6;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f1f5f9;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        code {
+            background-color: #f1f5f9;
+            padding: 2px 6px;
+            font-family: monospace;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #1e293b;
+            color: #f8fafc;
+            padding: 15px;
+            font-family: monospace;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .flex-container {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f1f5f9;
+        }
+        .inline-element {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: white;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Banco de Pruebas de Renderizado</h1>
+        <p>Documento estándar para verificar la correcta interpretación de etiquetas, estilos y codificación UTF-8.</p>
+    </header>
+
+    <section>
+        <h2>1. Jerarquía de Títulos (Headings)</h2>
+        <h1>Título H1 - El más grande</h1>
+        <h2>Título H2 - Sección primaria</h2>
+        <h3>Título H3 - Subsección</h3>
+        <h4>Título H4 - Detalle interno</h4>
+        <h5>Título H5 - Título menor</h5>
+        <h6>Título H6 - El tamaño mínimo</h6>
+    </section>
+
+    <section>
+        <h2>2. Formateo de Texto y Codificación</h2>
+        <p>Este párrafo contiene texto normal para evaluar el espaciado interlineal, márgenes y la correcta visualización de caracteres con acentos y eñes: <strong>Cigüeña, camión, lingüística, niño, Ñandú, Éxito</strong>.</p>
+        <p>Prueba de estilos en línea: <b>Texto en negrita (b)</b>, <strong>Texto fuerte (strong)</strong>, <i>Texto en cursiva (i)</i>, <em>Texto enfatizado (em)</em> y <u>Texto subrayado (u)</u>.</p>
+        <p>Uso de entidades HTML para evitar conflictos de parseo: El símbolo de menor que &lt;, el de mayor que &gt; y el ampersand &amp;.</p>
+    </section>
+
+    <section>
+        <h2>3. Bloques de Código</h2>
+        <p>Para fragmentos en la misma línea se utiliza la etiqueta <code><html></code> dentro del flujo del texto.</p>
+        <p>Para bloques completos con saltos de línea y espacios preservados se emplea la combinación de <code>&lt;pre&gt;</code> y <code>&lt;code&gt;</code>:</p>
+        <pre><code>def verificar_renderizado(html):
+    # Función de prueba para simular el procesamiento de tokens
+    tokens = tokenizar_string(html)
+    for t in tokens:
+        print(f"Token detectado: {t.tipo} -> {t.valor}")
+    return True</code></pre>
+    </section>
+
+    <section>
+        <h2>4. Estructuras de Listas</h2>
+        <h3>Lista No Ordenada (ul)</h3>
+        <ul>
+            <li>Elemento principal A</li>
+            <li>Elemento principal B
+                <ul>
+                    <li>Sub-elemento anidado B.1</li>
+                    <li>Sub-elemento anidado B.2</li>
+                </ul>
+            </li>
+            <li>Elemento principal C</li>
+        </ul>
+
+        <h3>Lista Ordenada (ol)</h3>
+        <ol>
+            <li>Primer paso obligatorio</li>
+            <li>Segundo paso con prioridad alta</li>
+            <li>Tercer paso de comprobación final</li>
+        </ol>
+    </section>
+
+    <section>
+        <h2>5. Estructuras de Tablas (Tablas complejas)</h2>
+        <p>Ideal para verificar alineación de celdas, bordes y el comportamiento de filas alternas.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Componente Evaluado</th>
+                    <th>Estado de Parseo</th>
+                    <th>Métrica de Rendimiento</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>001</td>
+                    <td>Árbol DOM (Nodos)</td>
+                    <td>Correcto</td>
+                    <td>12 ms</td>
+                </tr>
+                <tr>
+                    <td>002</td>
+                    <td>Hojas de Estilo (CSS)</td>
+                    <td>Parcial</td>
+                    <td>45 ms</td>
+                </tr>
+                <tr>
+                    <td>003</td>
+                    <td>Entidades Especiales</td>
+                    <td>Correcto</td>
+                    <td>3 ms</td>
+                </tr>
+                <tr>
+                    <td>004</td>
+                    <td>Bloques Anidados</td>
+                    <td>Pendiente</td>
+                    <td>--</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>6. Formularios y Elementos de Entrada</h2>
+        <p>Prueba elemental de inputs y controles interactivos sin procesamiento de backend.</p>
+        <form onsubmit="return false;">
+            <div style="margin-bottom: 10px;">
+                <label for="txt-usuario">Nombre de Usuario:</label><br>
+                <input type="text" id="txt-usuario" name="usuario" placeholder="Ej. v0ltrex" style="padding: 5px; width: 250px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="txt-pass">Clave de Acceso:</label><br>
+                <input type="password" id="txt-pass" name="password" style="padding: 5px; width: 250px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <input type="checkbox" id="chk-recuerda" name="recuerda">
+                <label for="chk-recuerda">Mantener la sesión activa en este equipo</label>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>Preferencia de visualización:</label><br>
+                <input type="radio" id="rad-claro" name="tema" value="claro" checked>
+                <label for="rad-claro">Modo Claro</label><br>
+                <input type="radio" id="rad-oscuro" name="tema" value="oscuro">
+                <label for="rad-oscuro">Modo Oscuro</label>
+            </div>
+            <div>
+                <button type="button" style="padding: 8px 15px; background-color: #1e293b; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Enviar Datos
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section>
+        <h2>7. Comportamiento de Cajas (Block vs Inline)</h2>
+        <p>El siguiente recuadro es un bloque divisor (<code>&lt;div&gt;</code>) que ocupa todo el ancho disponible:</p>
+        <div class="test-box">
+            Este es un contenedor con clase específica. Debería tener un borde grueso a la izquierda, relleno interno y un fondo grisáceo diferenciado.
+        </div>
+        <p>A continuación se presentan elementos en línea (<code>&lt;span&gt;</code>) agrupados dentro de un contenedor para evaluar cómo fluyen uno al lado del otro:</p>
+        <div class="flex-container">
+            <span class="inline-element">Token_1</span>
+            <span class="inline-element">Token_2</span>
+            <span class="inline-element">Token_3</span>
+            <span class="inline-element">Token_4</span>
+        </div>
+    </section>
+
+    <footer>
+        <p style="text-align: center; color: #64748b; font-size: 0.85em; margin-top: 40px;">
+            Fin del documento de pruebas • Generado para pruebas de desarrollo local.
+        </p>
+    </footer>
+
+</body>
+</html>

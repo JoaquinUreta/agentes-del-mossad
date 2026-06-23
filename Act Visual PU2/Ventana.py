@@ -5,7 +5,7 @@ from tkinter import ttk
 import platform
 from tkinter import messagebox
 from tkinter import filedialog
-from Renderizador import RenderizadorParser
+from RenderAvanzado import RenderizadorParserAvanzado
 from Historial import Historial
 from Pestaña import Pestaña, GestorPestañas
 from VentanaBusqueda import VentanaBusqueda
@@ -20,7 +20,7 @@ MAX_FAVORITOS = 10
 #  (déjala vacía "" si todavía no tienes una; el botón Asistente IA mostrará
 #  un aviso en vez de fallar silenciosamente)
 # ─────────────────────────────────────────────
-API_KEY_GEMINI = "AQUI VA LA APIKEY" #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+API_KEY_GEMINI = "" #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # ─────────────────────────────────────────────
 #  PALETAS

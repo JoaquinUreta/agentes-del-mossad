@@ -3,10 +3,48 @@ import base64
 import tkinter as tk
 from html.parser import HTMLParser
 from urllib.request import urlopen, Request
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 
 class RenderizadorParser(HTMLParser):
+
+    # ─────────────────────────────────────────────────────────────────
+    #  VALIDACIÓN DE CONEXIÓN (antes vivía sin usarse en RenderAvanzado.py)
+    #  Requerimiento 1 - Hito 3: soporta http/https, puertos permitidos
+    #  (80, 443, 8080, 3000, 5173), dominios e IPs (con o sin puerto).
+    # ─────────────────────────────────────────────────────────────────
+    @staticmethod
+    def soportes_url(url):
+        """
+        Valida y descompone una URL para navegación online.
+        Devuelve (protocolo, host, puerto, path) si es válida.
+        Lanza ValueError con un mensaje legible si no lo es
+        (puerto no soportado o host inválido).
+        """
+        puertos_permitidos = {80, 443, 8080, 3000, 5173}
+
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+
+        parsed = urlparse(url)
+        protocolo = parsed.scheme.lower()
+        host = parsed.hostname
+
+        if not host:
+            raise ValueError("URL inválida: host no válido")
+
+        puerto = parsed.port
+        if puerto is None:
+            puerto = 443 if protocolo == "https" else 80
+
+        if puerto not in puertos_permitidos:
+            raise ValueError(f"Conexión a puerto {puerto} no soportada")
+
+        path = parsed.path or "/"
+        if parsed.query:
+            path += "?" + parsed.query
+        return protocolo, host, puerto, path
+
     def __init__(self, area_contenido=None, callback_navegacion=None):
         #Callback_navegacion tiene navegar_desde_hipervinculo para cuando demos click a un link poder dirigirnos al lugar
         super().__init__()
@@ -79,10 +117,25 @@ class RenderizadorParser(HTMLParser):
         self._mostrar_en_area()
         return self.salida
 
-    def renderizar_desde_string(self, html_string, ruta_base=""):
+    def renderizar_desde_string(self, html_string, ruta_base="", validar_conexion=False):
+        """
+        validar_conexion=True se usa cuando ruta_base es una URL online
+        (la llama BarraBusqueda tras una respuesta HTTP exitosa). Si la
+        URL no pasa soportes_url, se muestra el error en rojo en vez de
+        intentar parsear el HTML.
+        """
         self.salida = []
         self._imagenes_tk = []
         self.url_base = ruta_base
+
+        if validar_conexion and ruta_base:
+            try:
+                self.soportes_url(ruta_base)
+            except ValueError as e:
+                self.salida = [("error", str(e))]
+                self._mostrar_en_area()
+                return self.salida
+
         self.ruta_actual = os.path.abspath(ruta_base) if ruta_base and not ruta_base.startswith("http") else os.getcwd()
         self.feed(html_string)
         self._mostrar_en_area()
@@ -147,7 +200,6 @@ class RenderizadorParser(HTMLParser):
         if src.startswith("//"):
             src = "https:" + src
         elif src.startswith("/") and self.url_base:
-            from urllib.parse import urlparse
             parsed = urlparse(self.url_base)
             src = f"{parsed.scheme}://{parsed.netloc}{src}"
         elif not src.startswith("http"):
@@ -297,6 +349,7 @@ class RenderizadorParser(HTMLParser):
             self.en_picture = True
         elif tag == "iframe":
             self.en_iframe = True
+
     def handle_endtag(self, tag):
         if tag == "script":
             self.en_script = False

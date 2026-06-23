@@ -1,26 +1,19 @@
 import http.client
+from RenderAvanzado import RenderizadorParserAvanzado
 
 
 class ClienteHTTP:
 
     def buscarurl(self, url, timeout=10):
-        # Detectar protocolo y limpiar la URL
-        if url.startswith("https://"):
-            usar_https = True
-            url = url[len("https://"):]
-        elif url.startswith("http://"):
-            usar_https = False
-            url = url[len("http://"):]
-        else:
-            usar_https = True  # Por defecto HTTPS si no especifica
+        # ── Validación de protocolo/host/puerto (Requerimiento 1, Hito 3) ──
+        # Antes esta lógica vivía sin usarse en RenderAvanzado.soportes_url.
+        # Ahora vive en RenderizadorParser y SÍ se ejecuta antes de conectar.
+        try:
+            protocolo, host, puerto, path = RenderizadorParserAvanzado.soportes_url(url)
+        except ValueError as e:
+            return f"<h1>{e}</h1>", None
 
-        # Separar host y path
-        if "/" in url:
-            host, path = url.split("/", 1)
-            path = "/" + path
-        else:
-            host = url
-            path = "/"
+        usar_https = (protocolo == "https")
 
         HEADERS = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
@@ -32,9 +25,9 @@ class ClienteHTTP:
         try:
             for _ in range(MAX_REDIRECCIONES):
                 if usar_https:
-                    conn = http.client.HTTPSConnection(host, 443, timeout=timeout)
+                    conn = http.client.HTTPSConnection(host, puerto, timeout=timeout)
                 else:
-                    conn = http.client.HTTPConnection(host, 80, timeout=timeout)
+                    conn = http.client.HTTPConnection(host, puerto, timeout=timeout)
 
                 conn.request("GET", path, headers=HEADERS)
                 response = conn.getresponse()
@@ -46,20 +39,12 @@ class ClienteHTTP:
                     conn.close()
                     if not location:
                         return "<h1>Redirección sin destino</h1>", status
-                    # Actualizar host/path con la nueva URL
-                    if location.startswith("https://"):
-                        usar_https = True
-                        location = location[len("https://"):]
-                    elif location.startswith("http://"):
-                        usar_https = False
-                        location = location[len("http://"):]
-                    # Redirección relativa (solo cambia el path)
-                    if "/" in location:
-                        host, path = location.split("/", 1)
-                        path = "/" + path
-                    else:
-                        host = location
-                        path = "/"
+                    # Revalidamos la URL de destino con la misma regla de puertos
+                    try:
+                        protocolo, host, puerto, path = RenderizadorParserAvanzado.soportes_url(location)
+                    except ValueError as e:
+                        return f"<h1>{e}</h1>", status
+                    usar_https = (protocolo == "https")
                     continue
 
                 html = response.read().decode("utf-8", errors="replace")
