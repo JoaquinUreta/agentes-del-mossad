@@ -55,7 +55,8 @@ class Pestaña:
         # ── Panel lateral del chatbot (oculto por defecto) ─────────────
         from PanelChatIA import PanelChatIA
         theme_actual = self._obtener_theme_actual(notebook)
-        self.panel_chat_ia = PanelChatIA(self.main_area, theme_actual)
+        modelo_ia = self.asistente_ia.modelo if self.asistente_ia else "sin modelo"
+        self.panel_chat_ia = PanelChatIA(self.main_area, theme_actual,modelo_ia)
         self._panel_chat_visible = False
         # No se hace .grid() todavía: permanece oculto hasta el primer toggle
 

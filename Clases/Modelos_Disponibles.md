@@ -1,0 +1,23 @@
+
+--- Modelos disponibles en tu proyecto ---
+- models/gemini-2.5-flash
+- models/gemini-2.5-pro
+- models/gemini-2.0-flash
+- models/gemini-2.0-flash-001
+- models/gemini-2.0-flash-lite-001
+- models/gemini-2.0-flash-lite
+- models/gemma-4-26b-a4b-it
+- models/gemma-4-31b-it
+- models/gemini-2.5-flash-lite
+- models/gemini-2.5-flash-image
+- models/gemini-3.1-flash-lite
+- models/gemini-3.1-flash-image
+- models/gemini-3.5-flash
+- models/gemini-embedding-001
+- models/gemini-embedding-2
+- models/imagen-4.0-generate-001
+- models/imagen-4.0-ultra-generate-001
+- models/imagen-4.0-fast-generate-001
+- models/veo-2.0-generate-001
+- models/veo-3.0-generate-001
+- models/veo-3.0-fast-generate-001

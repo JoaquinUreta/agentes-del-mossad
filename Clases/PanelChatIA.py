@@ -19,8 +19,9 @@ class PanelChatIA:
 
     ANCHO_PANEL = 300
 
-    def __init__(self, parent, theme):
+    def __init__(self, parent, theme, modelo=""):
         self.theme = theme
+        self.modelo= modelo
         T = theme
 
         # ── Frame raíz del panel (se coloca/oculta vía grid en Pestaña) ─
@@ -204,7 +205,7 @@ class PanelChatIA:
         T = self.theme
         lbl = tk.Label(
             self.frame_mensajes,
-            text="¡Hola soy Gémini!, Pregúntame lo que quieras",
+            text=f"¡Hola soy Gémini! ({self.modelo})\nPregúntame lo que quieras",
             font=("Courier New", 9), bg=T["surface"], fg=T["text_dim"],
             wraplength=self.ANCHO_PANEL - 40, justify="center",
         )
