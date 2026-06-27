@@ -1,0 +1,43 @@
+# Navegador GoFileExplorer
+
+Este proyecto es un navegador construido en Python 3 usando `tkinter`.
+
+## Requisitos
+
+- Python 3.x instalado
+- `tkinter` disponible en el intérprete de Python
+- Sistema operativo: Windows o Linux
+
+## Estructura del proyecto
+
+- `Clases/Ventana.py` — punto de entrada principal
+- `Clases/RenderAvanzado.py`, `Clases/Pestaña.py`, `Clases/Historial.py`, etc. — clases de soporte
+- `Clases/favoritos.json` y `Clases/historial.json` — datos locales de la aplicación
+
+## Cómo ejecutar
+
+### Opción 1: Ejecutar con Python
+
+1. Abre una terminal.
+2. Cambia al directorio del proyecto:
+   ```powershell
+   cd c:\Users\Pc\Desktop\apps\repogit\agentes-del-mossad\Clases
+   ```
+3. Ejecuta el archivo principal:
+   ```powershell
+   py Ventana.py
+   ```
+
+### Opción 2: Ejecutar con el archivo de inicio de Windows
+
+1. Asegúrate de que `GoFileExplorer.bat` exista en la carpeta raíz del proyecto.
+2. Ejecuta `GoFileExplorer.bat` haciendo doble clic o desde una terminal.
+
+## Notas
+
+- No es necesario compilar el proyecto; es una aplicación Python que se ejecuta directamente.
+- Si prefieres crear un ejecutable de Windows, usa PyInstaller desde la carpeta `Clases`:
+  ```powershell
+  py -m pip install pyinstaller
+  pyinstaller --onedir --windowed --name GoFileExplorer Ventana.py
+  ```
