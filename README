@@ -36,8 +36,4 @@ Este proyecto es un navegador construido en Python 3 usando `tkinter`.
 ## Notas
 
 - No es necesario compilar el proyecto; es una aplicación Python que se ejecuta directamente.
-- Si prefieres crear un ejecutable de Windows, usa PyInstaller desde la carpeta `Clases`:
-  ```powershell
-  py -m pip install pyinstaller
-  pyinstaller --onedir --windowed --name GoFileExplorer Ventana.py
-  ```
+
